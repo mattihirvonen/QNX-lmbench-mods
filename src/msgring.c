@@ -293,17 +293,13 @@ int main(int argc, char*argv[])
             }
         }
     }
-    if (!state.ppid)
-    {
-        // Wait for all process to wake up
+    if (state.ppid) {
+        jumper(Nsend);  // (Sub)Process should not return from jumper!
+    }
+    else {              // Wait for all process to wake up
         sleep(1);
         run_iterator(rounds, Nsend, procs);
     }
-    else
-    {
-        jumper(Nsend);  // (Sub)Process should not return from jumper!
-    }
-    sleep(1);
     kill(0, SIGKILL);   // Kill also all sub process
     return 0;
 }
