@@ -200,12 +200,10 @@ void iterator(int rounds, int Nsend)
 }
 
 
-void run_iterator(int rounds, int Nsend, int procs )
+void run_iterator(int rounds, int Nsend )
 {
         char txt[64], *pch;
         int  ppid, chid, fd;
-
-        printf("Run %d rounds with %d processes\n", rounds, procs);
 
         fd = open("/tmp/msgring.$", O_RDONLY);
         read(fd, txt, sizeof(txt));
@@ -363,7 +361,8 @@ int main(int argc, char*argv[])
     }
     else {              // Wait for all process to wake up
         sleep(1);
-        run_iterator(rounds, Nsend, procs);
+        printf("Run %d rounds with %d processes\n", rounds, procs);
+        run_iterator(rounds, Nsend);
     }
     kill(0, SIGKILL);   // Kill also all sub process
     return 0;
