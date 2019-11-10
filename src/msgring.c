@@ -71,7 +71,7 @@ ssize_t WRITE(int fd, const void *buf, size_t count)
 #endif // __linux
 
 
-void jumper(int Nsend)
+void jumper1(int Nsend)
 {
     #if DEBUG
     printf("jumper:      pid=%d, Nsend=%d, state.coid=%X, state.chid=%X\n",
@@ -79,8 +79,6 @@ void jumper(int Nsend)
     #endif
 
     char buffer[QMSG_BUFFER_SIZE];
-
-    if (!state.fork_count) while(1);  // Loop for ever here
 
     while (state.run)
     {
@@ -102,6 +100,38 @@ void jumper(int Nsend)
         #if DEBUG
         printf("jumper(%d) WRITE ok\n",getpid());
         #endif // DEBUG
+        #endif // __linux
+    }
+}
+
+
+void jumper(int Nsend)
+{
+    #if DEBUG
+    printf("jumper:      pid=%d, Nsend=%d, state.coid=%X, state.chid=%X\n",
+            state.pid, Nsend, state.coid, state.chid);
+    #endif
+
+    while (state.run)
+    {
+        #ifndef __linux
+	// info: NULL, or a pointer to a _msg_info structure where the function
+	//       can store additional information about the message.
+
+	struct   _msg_info   info;
+	uint8_t  msg_receive[QMSG_BUFFER_SIZE];
+	char     msg_reply[QMSG_BUFFER_SIZE];
+
+	register int chid = state.chid;
+	register int coid = state.coid;
+
+//	int rcvid = MsgReceive(chid, msg_receive, sizeof(msg_receive), &info);
+	int rcvid = MsgReceive(chid, msg_receive, sizeof(msg_receive),  NULL);
+        int  err  = MsgReply(rcvid, EOK, NULL, 0);
+	     err |= MsgSend(coid, msg_receive, Nsend, msg_reply, sizeof(msg_reply));
+        if  (err == -1) {
+            return exit(1);
+        }
         #endif // __linux
     }
 }
