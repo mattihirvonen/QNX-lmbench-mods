@@ -104,6 +104,34 @@ void jumper1(int Nsend)
     }
 }
 
+void iterator1(int rounds, int Nsend)
+{
+    #if DEBUG
+    printf("iterator(%d): pid=%d, ppid=%d, Nsend=%d, state.chid=%X, state.coid=%X\n",
+            rounds, state.pid, state.ppid, Nsend, state.chid, state.coid);
+    #endif
+
+    while (rounds-- > 0)
+    {
+        #ifndef __linux
+        char buffer[QMSG_BUFFER_SIZE];
+
+        if (WRITE(state.coid, buffer, Nsend) == -1) {
+            perror("iterator WRITE");
+            exit(1);
+        }
+        if (READ( state.chid, buffer, sizeof(buffer)) == -1) {
+            perror("iterator READ");
+            exit(1);
+        }
+        #if DEBUG
+        printf("iterator rounds=%d\n", rounds);
+        #endif // DEBUG
+        #endif // __linux
+    }
+}
+
+//------------------------------------------------------------------------------------------
 
 void jumper(int Nsend)
 {
@@ -129,6 +157,7 @@ void jumper(int Nsend)
 	int rcvid = MsgReceive(chid, msg_receive, sizeof(msg_receive),  NULL);
         int  err  = MsgReply(rcvid, EOK, NULL, 0);
 	     err |= MsgSend(coid, msg_receive, Nsend, msg_reply, sizeof(msg_reply));
+
         if  (err == -1) {
             return exit(1);
         }
@@ -147,15 +176,21 @@ void iterator(int rounds, int Nsend)
     while (rounds-- > 0)
     {
         #ifndef __linux
-        char buffer[QMSG_BUFFER_SIZE];
+	struct   _msg_info   info;
+	uint8_t  msg_transmit[QMSG_BUFFER_SIZE];
+	uint8_t  msg_receive[QMSG_BUFFER_SIZE];
+	char     msg_reply[QMSG_BUFFER_SIZE];
 
-        if (WRITE(state.coid, buffer, Nsend) == -1) {
-            perror("iterator WRITE");
-            exit(1);
-        }
-        if (READ( state.chid, buffer, sizeof(buffer)) == -1) {
-            perror("iterator READ");
-            exit(1);
+	register int chid = state.chid;
+	register int coid = state.coid;
+
+	int  err  = MsgSend(coid, msg_transmit, Nsend, msg_reply, sizeof(msg_reply));
+//	int rcvid = MsgReceive(chid, msg_receive, sizeof(msg_receive), &info);
+	int rcvid = MsgReceive(chid, msg_receive, sizeof(msg_receive),  NULL);
+             err |= MsgReply(rcvid, EOK, NULL, 0);
+
+        if  (err == -1) {
+            return exit(1);
         }
         #if DEBUG
         printf("iterator rounds=%d\n", rounds);
