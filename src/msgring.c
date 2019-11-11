@@ -5,7 +5,8 @@
 #ifndef  __linux
 #include <sys/neutrino.h>   // Msg....()
 #endif
-
+#include <sched.h>          // getprio(), setprio()
+#include <sys/resource.h>   // getprio(), setprio()
 #include "msgring.h"
 
 #define  QMSG_BUFFER_SIZE  256
@@ -104,6 +105,7 @@ void jumper1(int Nsend)
     }
 }
 
+
 void iterator1(int rounds, int Nsend)
 {
     #if DEBUG
@@ -153,11 +155,17 @@ void jumper(int Nsend)
 	register int chid = state.chid;
 	register int coid = state.coid;
 
-//	int rcvid = MsgReceive(chid, msg_receive, sizeof(msg_receive), &info);
+        // Receive message from previous process
 	int rcvid = MsgReceive(chid, msg_receive, sizeof(msg_receive),  NULL);
-        int  err  = MsgReply(rcvid, EOK, NULL, 0);
-	     err |= MsgSend(coid, msg_receive, Nsend, msg_reply, sizeof(msg_reply));
+//	int rcvid = MsgReceive(chid, msg_receive, sizeof(msg_receive), &info);
 
+	// Release previous process from dead lock
+        int  err  = MsgReply(rcvid, EOK, NULL, 0);
+
+        // Forfard message to next process
+        err |= MsgSend(coid, msg_receive, Nsend, msg_reply, sizeof(msg_reply));
+
+        // Error should not newer happen!
         if  (err == -1) {
             return exit(1);
         }
@@ -184,11 +192,15 @@ void iterator(int rounds, int Nsend)
 	register int chid = state.chid;
 	register int coid = state.coid;
 
+	// Send message to process ring
 	int  err  = MsgSend(coid, msg_transmit, Nsend, msg_reply, sizeof(msg_reply));
-//	int rcvid = MsgReceive(chid, msg_receive, sizeof(msg_receive), &info);
+
+        // Wait message return from process ring
 	int rcvid = MsgReceive(chid, msg_receive, sizeof(msg_receive),  NULL);
+//	int rcvid = MsgReceive(chid, msg_receive, sizeof(msg_receive), &info);
              err |= MsgReply(rcvid, EOK, NULL, 0);
 
+        // Error should not newer happen!
         if  (err == -1) {
             return exit(1);
         }
@@ -205,6 +217,7 @@ void run_iterator(int rounds, int Nsend )
         char txt[64], *pch;
         int  ppid, chid, fd;
 
+        // Get last process's PID and channel ID for connection
         fd = open("/tmp/msgring.$", O_RDONLY);
         read(fd, txt, sizeof(txt));
         close(fd);
@@ -362,6 +375,17 @@ int main(int argc, char*argv[])
     else {              // Wait for all process to wake up
         sleep(1);
         printf("Run %d rounds with %d processes\n", rounds, procs);
+
+        #if 0
+        // Prioriteetin asetus ei toimi en‰‰ n‰in yksinkertaisesti:
+        // The getprio() and setprio() functions are included in the QNX Neutrino libraries for porting QNX 4 applications.
+        // For new programs, use pthread_getschedparam().
+        int default_priority = getprio( getpid() );
+        printf("default_priority=%d\n", default_priority);
+        setprio( getpid(), default_priority + 10 );
+        #endif
+        #warning "getprio() and setprio()"
+
         run_iterator(rounds, Nsend);
     }
     kill(0, SIGKILL);   // Kill also all sub process
