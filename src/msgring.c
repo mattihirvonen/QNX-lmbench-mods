@@ -134,6 +134,53 @@ void iterator1(int rounds, int Nsend)
 }
 
 //------------------------------------------------------------------------------------------
+#define FILENAME  "/tmp/msgring.$"
+
+int writefile(char *filename, int pid, int chid)
+{
+        char txt[64];
+        int  nwite, fd;
+
+        sprintf(txt,"%d %d\n", pid, chid);
+        #if DEBUG
+        printf("file write:%s\n", txt);
+        #endif // DEBUG
+        fd = open(filename, O_CREAT | O_WRONLY);
+        if (fd < 0)
+            return -1;
+        nwite = write(fd, txt, strlen(txt));
+        if (nwite < 0)
+            return -1;
+        if (close(fd) < 0)
+            return -1;
+        return nwite;
+}
+
+
+int readfile(char *filename, int *ppid, int *chid)
+{
+        char txt[64], *pch;
+        int  nread, fd;
+
+        fd = open(filename, O_RDONLY);
+        if (fd < 0)
+            return -1;
+        nread = read(fd, txt, sizeof(txt));
+        if (nread < 0)
+            return -1;
+        if (close(fd) < 0)
+            return -1;
+
+        pch  = strtok(txt,"\t ,");
+       *ppid = atoi(pch);
+        pch  = strtok (NULL, "\t ,");
+       *chid = atoi(pch);
+        #if DEBUG
+        printf("file read (%d %d):%s\n", ppid, chid, txt);
+        #endif // DEBUG
+        return *ppid;
+}
+
 
 void jumper(int Nsend)
 {
@@ -141,6 +188,9 @@ void jumper(int Nsend)
     printf("jumper:      pid=%d, Nsend=%d, state.coid=%X, state.chid=%X\n",
             state.pid, Nsend, state.coid, state.chid);
     #endif
+
+    register int chid = state.chid;
+    register int coid = state.coid;
 
     while (state.run)
     {
@@ -152,8 +202,6 @@ void jumper(int Nsend)
 	uint8_t  msg_receive[QMSG_BUFFER_SIZE];
 	char     msg_reply[QMSG_BUFFER_SIZE];
 
-	register int chid = state.chid;
-	register int coid = state.coid;
 
         // Receive message from previous process
 	int rcvid = MsgReceive(chid, msg_receive, sizeof(msg_receive),  NULL);
@@ -181,6 +229,9 @@ void iterator(int rounds, int Nsend)
             rounds, state.pid, state.ppid, Nsend, state.chid, state.coid);
     #endif
 
+    register int chid = state.chid;
+    register int coid = state.coid;
+
     while (rounds-- > 0)
     {
         #ifndef __linux
@@ -188,9 +239,6 @@ void iterator(int rounds, int Nsend)
 	uint8_t  msg_transmit[QMSG_BUFFER_SIZE];
 	uint8_t  msg_receive[QMSG_BUFFER_SIZE];
 	char     msg_reply[QMSG_BUFFER_SIZE];
-
-	register int chid = state.chid;
-	register int coid = state.coid;
 
 	// Send message to process ring
 	int  err  = MsgSend(coid, msg_transmit, Nsend, msg_reply, sizeof(msg_reply));
@@ -202,6 +250,7 @@ void iterator(int rounds, int Nsend)
 
         // Error should not newer happen!
         if  (err == -1) {
+            kill(0, SIGKILL);
             return exit(1);
         }
         #if DEBUG
@@ -212,32 +261,27 @@ void iterator(int rounds, int Nsend)
 }
 
 
-void run_iterator(int rounds, int Nsend )
+void run_iterator(int Nsend )
 {
-        char txt[64], *pch;
         int  ppid, chid, fd;
 
+        printf("Run %d rounds with %d processes\n", rounds, procs);
+
         // Get last process's PID and channel ID for connection
-        fd = open("/tmp/msgring.$", O_RDONLY);
-        read(fd, txt, sizeof(txt));
-        close(fd);
+        if (readfile(FILENAME, &ppid, &chid) < 0) {
+            kill(0, SIGKILL);
+            exit(1);
+        }
 
-        pch  = strtok(txt,"\t ,");
-        ppid = atoi(pch);
-        pch  = strtok (NULL, "\t ,");
-        chid = atoi(pch);
-
-        #if DEBUG
-        printf("file read (%d %d):%s\n", ppid, chid, txt);
-        #endif // DEBUG
-
+        #ifndef __linux
         int coid = ConnectAttach(0, ppid, chid, _NTO_SIDE_CHANNEL, 0);
-        if (coid == -1)
-        {
+        if (coid == -1) {
             printf("iterator:   coid=ERROR\n");
+            kill(0, SIGKILL);
             exit(1);
         }
         state.coid = coid;  // "fd(WRITE)"
+        #endif // __linux
 
         iterator(rounds, Nsend);
 }
@@ -273,10 +317,8 @@ void get_opts(int argc, char *argv[])
 }
 
 
-int main(int argc, char*argv[])
+void init_state(void)
 {
-    get_opts(argc, argv);
-
     state.run        = 1;
     state.fork_count = procs - 1;
     state.base_pid   = getpid();
@@ -297,6 +339,29 @@ int main(int argc, char*argv[])
     state.base_chid  = state.coid;
     state.ppid       = 0;
     state.pid        = getpid();
+}
+
+
+void set_scheduling(void)
+{
+        /// TODO: Split msg send, receive and reply to threads with priorities?
+        #warning "getprio() and setprio()"
+
+        #if 0
+        // Prioriteetin asetus ei toimi en‰‰ n‰in yksinkertaisesti:
+        // The getprio() and setprio() functions are included in the QNX Neutrino libraries for porting QNX 4 applications.
+        // For new programs, use pthread_getschedparam().
+        int default_priority = getprio( getpid() );
+        printf("default_priority=%d\n", default_priority);
+        setprio( getpid(), default_priority + 10 );
+        #endif
+}
+
+
+int main(int argc, char*argv[])
+{
+    get_opts(argc, argv);
+    init_state();
 
     fork_pids[0] = getpid();
     for (int ix  = 1; state.fork_count-- > 0; ix++)
@@ -316,15 +381,15 @@ int main(int argc, char*argv[])
                     state.pid     = getpid();
                     state.ppid    = getppid();
 
-                    #if 1 // DEBUG
+                    #if DEBUG || 1
                     if (state.fork_count > 0)
                         printf("child(%d):    pid=%d, ppid=%d, chid=%X\n", ix, state.pid, state.ppid, state.chid);
                     else
                         printf("child(%d):    pid=%d, ppid=%d, chid=%X (last process)\n", ix, state.pid, state.ppid, state.chid);
-                    #endif
+                    #endif // DEBUG
 
                     #ifndef __linux
-                    //if (state.fork_count > 0)
+                    // if (state.fork_count > 0)
                     {
                         // fd(READ) channel ID
                         int chid = ChannelCreate(0);
@@ -343,17 +408,9 @@ int main(int argc, char*argv[])
                         state.chid = chid;  // "fd(READ)"
                         state.coid = coid;  // "fd(WRITE)"
                     }
-                    if (!state.fork_count)  // Last process to fork!
+                    if (!state.fork_count)  // Last forked process?
                     {
-                        char txt[64];
-                        int  fd = open("/tmp/msgring.$", O_CREAT | O_WRONLY);
-
-                        sprintf(txt,"%d %d\n", state.pid, state.chid);
-                        write(fd, txt, strlen(txt));
-                        close(fd);
-                        #if DEBUG
-                        printf("file write:%s\n", txt);
-                        #endif // DEBUG
+                        writefile(FILENANE, state.pid, state.chid);
                     }
                     #endif // __linux
 
@@ -364,36 +421,22 @@ int main(int argc, char*argv[])
 
                 default:
                     // Parent process
+                    #if DEBUG || 1
                     printf("parent(%d):   pid=%d, new_pid(%d)=%d, chid=%X, coid=%X\n", ix-1, getpid(), ix, new_pid, state.chid, state.coid);
+                    #endif // DEBUG
                     break;
             }
         }
     }
+    set_scheduling();
+
     if (state.ppid) {
-        jumper(Nsend);  // (Sub)Process should not return from jumper!
+        jumper(Nsend);  // (Sub)Process should not return from jumper()!
     }
     else {              // Wait for all process to wake up
         sleep(1);
-        printf("Run %d rounds with %d processes\n", rounds, procs);
-
-        #if 0
-        // Prioriteetin asetus ei toimi en‰‰ n‰in yksinkertaisesti:
-        // The getprio() and setprio() functions are included in the QNX Neutrino libraries for porting QNX 4 applications.
-        // For new programs, use pthread_getschedparam().
-        int default_priority = getprio( getpid() );
-        printf("default_priority=%d\n", default_priority);
-        setprio( getpid(), default_priority + 10 );
-        #endif
-        #warning "getprio() and setprio()"
-
-        run_iterator(rounds, Nsend);
+        run_iterator(Nsend);
     }
     kill(0, SIGKILL);   // Kill also all sub process
-    return 0;
-}
-
-
-int  PIPE(int pipefd[2], void *cookie, char *txt)
-{
     return 0;
 }

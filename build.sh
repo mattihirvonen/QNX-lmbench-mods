@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CC=qcc
+CC=gcc
 
 TGT=-V
 
@@ -15,8 +15,15 @@ do_compile() {
     cd   ..
 }
 
+build_msgring() {
+    cd   src
+    $CC  -DHAVE_socklen_t  -o $1  $1.c
+    mv   $1  ..
+    cd   ..
+}
 
 #do_compile  hello
 #do_compile  lat_pipe
 #do_compile  lat_ctx
- do_compile  msgring
+
+ build_msgring  msgring
