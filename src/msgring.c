@@ -34,10 +34,6 @@ typedef struct {
     int ppid;
     int chid;
     int coid;
-    //
-    int base_pid;
-    int base_chid;
-    int fork_count;
 } state_t;
 
 
@@ -375,8 +371,6 @@ void get_opts(int argc, char *argv[])
 void init_state(void)
 {
     state.run        = 1;
-    state.fork_count = procs - 1;
-    state.base_pid   = getpid();
     #ifdef __linux
     state.chid       = 0;
     state.coid       = 0;
@@ -391,7 +385,6 @@ void init_state(void)
         exit(1);
     #endif
     #endif // __linux
-    state.base_chid  = state.coid;
     state.ppid       = 0;
     state.pid        = getpid();
 }
@@ -417,8 +410,10 @@ int set_scheduling(int policy, int priority)
 
 void fork_msgring(int procs)
 {
+    int fork_count = procs - 1;
+
     fork_pids[0] = getpid();
-    for (int ix  = 1; state.fork_count-- > 0; ix++)
+    for (int ix  = 1; fork_count-- > 0; ix++)
     {
         if (getpid() == fork_pids[ix-1])
         {
@@ -436,14 +431,14 @@ void fork_msgring(int procs)
                     state.ppid    = getppid();
 
                     #if DEBUG || 1
-                    if (state.fork_count > 0)
+                    if (fork_count > 0)
                         printf("child(%d):    pid=%d, ppid=%d, chid=%X\n", ix, state.pid, state.ppid, state.chid);
                     else
                         printf("child(%d):    pid=%d, ppid=%d, chid=%X (last process)\n", ix, state.pid, state.ppid, state.chid);
                     #endif // DEBUG
 
                     #ifndef __linux
-                    // if (state.fork_count > 0)
+                    // if (fork_count > 0)
                     {
                         // fd(READ) channel ID
                         int chid = ChannelCreate(0);
@@ -462,7 +457,7 @@ void fork_msgring(int procs)
                         state.chid = chid;  // "fd(READ)"
                         state.coid = coid;  // "fd(WRITE)"
                     }
-                    if (!state.fork_count)  // Last forked process?
+                    if (!fork_count)  // Last forked process?
                     {
                         writefile(FILENANE, state.pid, state.chid);
                     }
