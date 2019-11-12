@@ -123,6 +123,8 @@ ssize_t WRITE(int fd, const void *buf, size_t count)
 }
 #endif // __linux
 
+//-------------------------------------------------------------------------------------
+// Old code from pipe(s) method using read() and write()
 
 void jumper1(int Nsend)
 {
@@ -186,6 +188,68 @@ void iterator1(int rounds, int Nsend)
 }
 
 //------------------------------------------------------------------------------------------
+
+#ifdef __linux
+
+#define  _NTO_SIDE_CHANNEL  1
+#define  MAXPIPES 100
+typedef  struct
+{
+    int   pid;
+    int   fd[2];
+    int   chid;
+} msgpipe_t;
+
+msgpipe_t pipetable[MAXPIPES];
+int       pipecount;
+
+
+int ChannelCreate(int arg);
+int ConnectAttach(int arg1, int pid, int chid, int arg2, int arg3);
+int MsgSend(int coid, void *txbuf, int Nsend, void *rxbuf, int rxsize);
+
+
+int ChannelCreate(int arg)
+{
+    if (pipecount >= MAXPIPES) return -1;
+
+    int fd[2];
+    int err = pipe( fd );
+    int chid = random() & 0x7fffffff;
+
+    if (err)  return -1;
+
+    pipetable[pipecount].pid   = getpid();
+    pipetable[pipecount].fd[0] = fd[0];
+    pipetable[pipecount].fd[1] = fd[1];
+    pipetable[pipecount].chid  = chid;
+    pipecount++;
+    return chid;
+}
+
+
+int ConnectAttach(int arg1, int pid, int chid, int arg2, int arg3)
+{
+    for (int i = 0; i < pipecount; i++)
+    {
+        if ((pid == pipetable[i].pid) && (chid == pipetable[i].chid))
+        {
+            return pipetable[i].chid;
+        }
+    }
+    return -1;
+}
+
+/*
+int coid  = ConnectAttach(0, state.ppid, state.chid, _NTO_SIDE_CHANNEL, 0);
+int  err  = MsgSend(coid, msg_receive, Nsend, msg_reply, sizeof(msg_reply));
+int rcvid = MsgReceive(chid, msg_receive, sizeof(msg_receive),  NULL);
+int  err  = MsgReply(rcvid, EOK, NULL, 0);
+*/
+
+#endif
+
+//-----------------------------------------------------------------------------------------------
 #define FILENAME  "/tmp/msgring.$"
 
 int writefile(char *filename, int pid, int chid)
@@ -254,7 +318,6 @@ void jumper(int Nsend)
 	uint8_t  msg_receive[QMSG_BUFFER_SIZE];
 	char     msg_reply[QMSG_BUFFER_SIZE];
 
-
         // Receive message from previous process
 	int rcvid = MsgReceive(chid, msg_receive, sizeof(msg_receive),  NULL);
 //	int rcvid = MsgReceive(chid, msg_receive, sizeof(msg_receive), &info);
@@ -294,6 +357,8 @@ void iterator(int rounds, int Nsend)
 
 	// Send message to process ring
 	int  err  = MsgSend(coid, msg_transmit, Nsend, msg_reply, sizeof(msg_reply));
+
+	sched_yieald();
 
         // Wait message return from process ring
 	int rcvid = MsgReceive(chid, msg_receive, sizeof(msg_receive),  NULL);
@@ -373,22 +438,11 @@ void get_opts(int argc, char *argv[])
 void init_state(void)
 {
     state.run        = 1;
-    #ifdef __linux
-    state.chid       = 0;
-    state.coid       = 0;
-    #else
+    state.ppid       = 0;
+    state.pid        = getpid();
     state.chid       = ChannelCreate(0);  // fd(READ)
     if (state.chid  == -1)
         exit(1);
-    #if 0
-    // Connect to WRITE channel later by name
-    state.coid       = ChannelCreate(0);  // fd(WRITE)
-    if (state.coid  == -1)
-        exit(1);
-    #endif
-    #endif // __linux
-    state.ppid       = 0;
-    state.pid        = getpid();
 }
 
 
@@ -439,7 +493,6 @@ void fork_msgring(int procs)
                         printf("child(%d):    pid=%d, ppid=%d, chid=%X (last process)\n", ix, state.pid, state.ppid, state.chid);
                     #endif // DEBUG
 
-                    #ifndef __linux
                     // if (fork_count > 0)
                     {
                         // fd(READ) channel ID
@@ -459,7 +512,6 @@ void fork_msgring(int procs)
                         state.chid = chid;  // "fd(READ)"
                         state.coid = coid;  // "fd(WRITE)"
                     }
-                    #endif // __linux
 
                     if (!fork_count)  // Last forked process?
                     {
