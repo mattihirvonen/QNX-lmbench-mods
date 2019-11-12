@@ -491,7 +491,7 @@ int main(int argc, char*argv[])
     init_state();
 
     fork_msgring(procs);
-    set_scheduling(SCHED_FIFO, 10);  // SCHED_FIFO or SCHED_RR
+    set_scheduling(SCHED_RR, 10);  // SCHED_FIFO or SCHED_RR
 
     if (state.ppid) {
         jumper(Nsend);  // (Sub)Process should not return from jumper()!
