@@ -87,6 +87,7 @@ int64_t diff_tp_ms( const struct timespec *tp_start, const struct timespec *tp_e
 }
 
 //-----------------------------------------------------------------------------------------------
+// Old code from pipe(s) method using read() and write()
 
 #ifndef __linux
 ssize_t READ(int fd, void *buf, size_t count)
@@ -192,9 +193,9 @@ int writefile(char *filename, int pid, int chid)
         char txt[64];
         int  nwite, fd;
 
-        sprintf(txt,"%d %d\n", pid, chid);
+        sprintf(txt,"%d %d", pid, chid);
         #if DEBUG
-        printf("file write:%s\n", txt);
+        printf("file write  <%s>\n", txt);
         #endif // DEBUG
         fd = open(filename, O_CREAT | O_WRONLY);
         if (fd < 0)
@@ -227,7 +228,7 @@ int readfile(char *filename, int *ppid, int *chid)
         pch  = strtok (NULL, "\t ,");
        *chid = atoi(pch);
         #if DEBUG
-        printf("file read (%d %d):%s\n", ppid, chid, txt);
+        printf("file read   (%d %d)\n", *ppid, *chid);
         #endif // DEBUG
         return *ppid;
 }
@@ -320,6 +321,7 @@ void run_iterator(int Nsend )
 
         // Get last process's PID and channel ID for connection
         if (readfile(FILENAME, &ppid, &chid) < 0) {
+            printf("iterator:    readfile ERROR\n");
             kill(0, SIGKILL);
             exit(1);
         }
@@ -327,7 +329,7 @@ void run_iterator(int Nsend )
         #ifndef __linux
         int coid = ConnectAttach(0, ppid, chid, _NTO_SIDE_CHANNEL, 0);
         if (coid == -1) {
-            printf("iterator:   coid=ERROR\n");
+            printf("iterator:    coid ERROR\n");
             kill(0, SIGKILL);
             exit(1);
         }
@@ -457,11 +459,12 @@ void fork_msgring(int procs)
                         state.chid = chid;  // "fd(READ)"
                         state.coid = coid;  // "fd(WRITE)"
                     }
+                    #endif // __linux
+
                     if (!fork_count)  // Last forked process?
                     {
-                        writefile(FILENANE, state.pid, state.chid);
+                        writefile(FILENAME, state.pid, state.chid);
                     }
-                    #endif // __linux
 
                     #if DEBUG
                     printf("child(%d):   chid=%X, coid=%X\n", ix, state.chid, state.coid);
@@ -498,8 +501,10 @@ int main(int argc, char*argv[])
         clock_gettime(CLOCK_MONOTONIC, &tp_start);
         run_iterator(Nsend);
         clock_gettime(CLOCK_MONOTONIC, &tp_end);
+
         printf("Test run time %ld us\n", diff_tp_us(&tp_start, &tp_end));
     }
+    sleep(1);
     kill(0, SIGKILL);   // Kill also all sub process
     return 0;
 }
