@@ -1,6 +1,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #ifndef  __linux
 #include <sys/neutrino.h>   // Msg....()
@@ -15,6 +16,17 @@
 #ifndef  DEBUG
 #define  DEBUG 0
 #endif //DEBUG
+
+
+#if defined(__MINGW32__)
+typedef struct timespec {
+        time_t   tv_sec;        /* seconds */
+        long     tv_nsec;       /* nanoseconds */
+} timespec_t;
+#else
+typedef struct timespec timespec_t;
+#endif // __MINGW32__
+
 
 typedef struct {
     int run;
@@ -36,6 +48,49 @@ int      rounds = 5;
 int      Nsend  = 1;
 int      warmup = 1;
 
+//-----------------------------------------------------------------------------------------------
+
+void diff_tp( struct timespec *diff, const struct timespec *tp_start, const struct timespec *tp_end )
+{
+    if (tp_start->tv_nsec > tp_end->tv_nsec)
+    {
+        diff->tv_sec  = tp_end->tv_sec - tp_start->tv_sec - 1;
+        diff->tv_nsec = 1000000000 - (tp_start->tv_nsec - tp_end->tv_nsec);
+    }
+    else
+    {
+        diff->tv_sec  = tp_end->tv_sec  - tp_start->tv_sec;
+        diff->tv_nsec = tp_end->tv_nsec - tp_start->tv_nsec;
+    }
+}
+
+int64_t diff_tp_us( const struct timespec *tp_start, const struct timespec *tp_end )
+{
+    struct timespec  diff;
+    int64_t          us;
+
+    diff_tp( &diff, tp_start, tp_end );
+
+    us  = diff.tv_nsec / 1000;
+    us += diff.tv_sec  * 1000000;
+
+    return us;
+}
+
+int64_t diff_tp_ms( const struct timespec *tp_start, const struct timespec *tp_end )
+{
+    struct timespec  diff;
+    int64_t          ms;
+
+    diff_tp( &diff, tp_start, tp_end );
+
+    ms  = diff.tv_nsec / 1000000;
+    ms += diff.tv_sec  * 1000;
+
+    return ms;
+}
+
+//-----------------------------------------------------------------------------------------------
 
 #ifndef __linux
 ssize_t READ(int fd, void *buf, size_t count)
@@ -342,27 +397,26 @@ void init_state(void)
 }
 
 
-void set_scheduling(void)
+// https://pubs.opengroup.org/onlinepubs/009695399/functions/xsh_chap02_08.html#tag_02_08_04_01
+int set_scheduling(int policy, int priority)
 {
-        /// TODO: Split msg send, receive and reply to threads with priorities?
-        #warning "getprio() and setprio()"
+    struct sched_param  param;
 
-        #if 0
-        // Prioriteetin asetus ei toimi enää näin yksinkertaisesti:
-        // The getprio() and setprio() functions are included in the QNX Neutrino libraries for porting QNX 4 applications.
-        // For new programs, use pthread_getschedparam().
-        int default_priority = getprio( getpid() );
-        printf("default_priority=%d\n", default_priority);
-        setprio( getpid(), default_priority + 10 );
-        #endif
+    // Get current (dafault parameters)
+    int ret = sched_getparam( getpid(), &param);
+
+    param.sched_priority = priority;                       // priority:  0 ... 99 (Posix max 31)
+    ret = sched_setscheduler(getpid(), policy, &param);    // policy:    SCHED_FIFO or SCHED_RR
+
+    // Sample command to read current scheduling policy
+    policy = sched_getscheduler(getpid());
+
+    return ret;  // Dummy, avoid warning of variable set but not used
 }
 
 
-int main(int argc, char*argv[])
+void fork_msgring(int procs)
 {
-    get_opts(argc, argv);
-    init_state();
-
     fork_pids[0] = getpid();
     for (int ix  = 1; state.fork_count-- > 0; ix++)
     {
@@ -428,14 +482,95 @@ int main(int argc, char*argv[])
             }
         }
     }
-    set_scheduling();
+}
+
+
+int main(int argc, char*argv[])
+{
+    timespec_t  tp_start, tp_end;
+
+    get_opts(argc, argv);
+    init_state();
+
+    fork_msgring(procs);
+    /*
+    fork_pids[0] = getpid();
+    for (int ix  = 1; state.fork_count-- > 0; ix++)
+    {
+        if (getpid() == fork_pids[ix-1])
+        {
+            int new_pid = fork();
+            switch (new_pid)
+            {
+                case -1:
+                    exit(1);
+                    break;
+
+                case 0:
+                    // Child process
+                    fork_pids[ix] = getpid();
+                    state.pid     = getpid();
+                    state.ppid    = getppid();
+
+                    #if DEBUG || 1
+                    if (state.fork_count > 0)
+                        printf("child(%d):    pid=%d, ppid=%d, chid=%X\n", ix, state.pid, state.ppid, state.chid);
+                    else
+                        printf("child(%d):    pid=%d, ppid=%d, chid=%X (last process)\n", ix, state.pid, state.ppid, state.chid);
+                    #endif // DEBUG
+
+                    #ifndef __linux
+                    // if (state.fork_count > 0)
+                    {
+                        // fd(READ) channel ID
+                        int chid = ChannelCreate(0);
+                        if (chid == -1)
+                        {
+                            printf("child(%d):   chid=ERROR\n", ix);
+                            exit(1);
+                        }
+                        // fd(WRITE) channel ID
+                        int coid = ConnectAttach(0, state.ppid, state.chid, _NTO_SIDE_CHANNEL, 0);
+                        if (coid == -1)
+                        {
+                            printf("child(%d):   coid=ERROR state.ppid=%d state.chid=%X\n", ix, state.ppid, state.chid);
+                            exit(1);
+                        }
+                        state.chid = chid;  // "fd(READ)"
+                        state.coid = coid;  // "fd(WRITE)"
+                    }
+                    if (!state.fork_count)  // Last forked process?
+                    {
+                        writefile(FILENANE, state.pid, state.chid);
+                    }
+                    #endif // __linux
+
+                    #if DEBUG
+                    printf("child(%d):   chid=%X, coid=%X\n", ix, state.chid, state.coid);
+                    #endif // DEBUG
+                    break;
+
+                default:
+                    // Parent process
+                    #if DEBUG || 1
+                    printf("parent(%d):   pid=%d, new_pid(%d)=%d, chid=%X, coid=%X\n", ix-1, getpid(), ix, new_pid, state.chid, state.coid);
+                    #endif // DEBUG
+                    break;
+            }
+        }
+    }
+    */
+    set_scheduling(SCHED_FIFO, 10);  // SCHED_FIFO or SCHED_RR
 
     if (state.ppid) {
         jumper(Nsend);  // (Sub)Process should not return from jumper()!
     }
     else {              // Wait for all process to wake up
         sleep(1);
+        clock_gettime(CLOCK_MONOTONIC, &tp_start);
         run_iterator(Nsend);
+        clock_gettime(CLOCK_MONOTONIC, &tp_end);
+        printf("Test run time %ld us\n", diff_tp_us(&tp_start, &tp_end));
     }
     kill(0, SIGKILL);   // Kill also all sub process
     return 0;
