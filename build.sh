@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CC=gcc
+CC=qcc
 
 TGT=-V
 

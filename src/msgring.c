@@ -12,9 +12,10 @@
 
 #define  QMSG_BUFFER_SIZE  256
 #define  MAXPROCS          1000
+#define FILENAME           "/tmp/msgring.$"
 
 #ifndef  DEBUG
-#define  DEBUG 0
+#define  DEBUG 1
 #endif //DEBUG
 
 
@@ -43,6 +44,8 @@ int      procs  = 4;
 int      rounds = 5;
 int      Nsend  = 1;
 int      warmup = 1;
+int      scheduler;
+int      verbose;
 
 //-----------------------------------------------------------------------------------------------
 
@@ -188,10 +191,16 @@ void iterator1(int rounds, int Nsend)
 }
 
 //------------------------------------------------------------------------------------------
+// Tiny QNX message functions simulation
+// Homma on pahasti kesken !!!!!!!!
+// Pit‰‰ ratkaista MsgReply() logiikka
+// - tarvitaan piippupari / message putki
 
 #ifdef __linux
 
 #define  _NTO_SIDE_CHANNEL  1
+#define  EOK                0
+
 #define  MAXPIPES 100
 typedef  struct
 {
@@ -207,6 +216,8 @@ int       pipecount;
 int ChannelCreate(int arg);
 int ConnectAttach(int arg1, int pid, int chid, int arg2, int arg3);
 int MsgSend(int coid, void *txbuf, int Nsend, void *rxbuf, int rxsize);
+int MsgReceive(int chid, void *rxbuf, int rxsize, int arg);
+int MsgReply(int rcvid, int EOK, int arg1, int arg2);
 
 
 int ChannelCreate(int arg)
@@ -240,7 +251,49 @@ int ConnectAttach(int arg1, int pid, int chid, int arg2, int arg3)
     return -1;
 }
 
+
+int find_pipetable_ix(int chid)
+{
+    for (int ix = 0; ix < pipecount; ix++)
+    {
+        if (pipetable[ix].chid == chid)
+            return ix;
+    }
+    return -1;
+}
+
+
+int MsgSend(int coid, void *txbuf, int Nsend, void *rxbuf, int rxsize)
+{
+    int ix = find_pipetable_ix(coid);
+
+    if (ix  < 0)  return -1;
+    int err = write( pipetable[ix].fd[0], txbuf, Nsend );
+    if (err < 0)  return -1;
+    err = read( pipetable[ix].fd[0],rxbuf, rxsize );
+    return err < 0 ? -1 : 0;
+}
+
+
+int MsgReceive(int chid, void *rxbuf, int rxsize, int arg)
+{
+    int ix = find_pipetable_ix(chid);
+
+    if (ix  < 0)  return -1;
+    int err = read( pipetable[ix].fd[1], rxbuf, rxsize );
+    return err < 0 ? -1 : 0;
+}
+
+
+int MsgReply(int rcvid, int EOK, int arg1, int arg2)
+{
+    int ix = find_pipetable_ix(rcvid);
+    return 0;
+}
+
+
 /*
+int  err  = ChannelCreate(int arg);
 int coid  = ConnectAttach(0, state.ppid, state.chid, _NTO_SIDE_CHANNEL, 0);
 int  err  = MsgSend(coid, msg_receive, Nsend, msg_reply, sizeof(msg_reply));
 int rcvid = MsgReceive(chid, msg_receive, sizeof(msg_receive),  NULL);
@@ -250,7 +303,6 @@ int  err  = MsgReply(rcvid, EOK, NULL, 0);
 #endif
 
 //-----------------------------------------------------------------------------------------------
-#define FILENAME  "/tmp/msgring.$"
 
 int writefile(char *filename, int pid, int chid)
 {
@@ -258,9 +310,6 @@ int writefile(char *filename, int pid, int chid)
         int  nwite, fd;
 
         sprintf(txt,"%d %d", pid, chid);
-        #if DEBUG
-        printf("file write  <%s>\n", txt);
-        #endif // DEBUG
         fd = open(filename, O_CREAT | O_WRONLY);
         if (fd < 0)
             return -1;
@@ -269,17 +318,31 @@ int writefile(char *filename, int pid, int chid)
             return -1;
         if (close(fd) < 0)
             return -1;
+        if (verbose) {
+            printf("file write  <%s>\n", txt);
+        }
         return nwite;
 }
 
 
 int readfile(char *filename, int *ppid, int *chid)
 {
+        #define MAXRETRY  30
+
         char txt[64], *pch;
         int  nread, fd;
+        int  retry_count;
 
-        fd = open(filename, O_RDONLY);
-        if (fd < 0)
+        // Wait all sub process to wake up
+        for(retry_count = 0; retry_count < MAXRETRY; retry_count++)
+        {
+            sleep(1);
+            fd = open(filename, O_RDONLY);
+            if (fd > 0)
+                break;
+            printf("readfile (re)try %d/%d\n", retry_count+1, MAXRETRY);
+        }
+        if (retry_count >= MAXRETRY)
             return -1;
         nread = read(fd, txt, sizeof(txt));
         if (nread < 0)
@@ -291,19 +354,19 @@ int readfile(char *filename, int *ppid, int *chid)
        *ppid = atoi(pch);
         pch  = strtok (NULL, "\t ,");
        *chid = atoi(pch);
-        #if DEBUG
-        printf("file read   (%d %d)\n", *ppid, *chid);
-        #endif // DEBUG
+        if (verbose) {
+            printf("file read   (ppid=%d chid=%d)\n", *ppid, *chid);
+        }
         return *ppid;
 }
 
 
 void jumper(int Nsend)
 {
-    #if DEBUG
-    printf("jumper:      pid=%d, Nsend=%d, state.coid=%X, state.chid=%X\n",
-            state.pid, Nsend, state.coid, state.chid);
-    #endif
+    if (verbose) {
+            printf("jumper:      pid=%d, Nsend=%d, state.coid=%X, state.chid=%X\n",
+                    state.pid, Nsend, state.coid, state.chid);
+    }
 
     register int chid = state.chid;
     register int coid = state.coid;
@@ -323,7 +386,7 @@ void jumper(int Nsend)
 //	int rcvid = MsgReceive(chid, msg_receive, sizeof(msg_receive), &info);
 
 	// Release previous process from dead lock
-        int  err  = MsgReply(rcvid, EOK, NULL, 0);
+        int   err = MsgReply(rcvid, EOK, NULL, 0);
 
         // Forfard message to next process
         err |= MsgSend(coid, msg_receive, Nsend, msg_reply, sizeof(msg_reply));
@@ -339,10 +402,10 @@ void jumper(int Nsend)
 
 void iterator(int rounds, int Nsend)
 {
-    #if DEBUG
-    printf("iterator(%d): pid=%d, ppid=%d, Nsend=%d, state.chid=%X, state.coid=%X\n",
-            rounds, state.pid, state.ppid, Nsend, state.chid, state.coid);
-    #endif
+    if (verbose) {
+        printf("iterator(%d): pid=%d, ppid=%d, Nsend=%d, state.chid=%X, state.coid=%X\n",
+                rounds, state.pid, state.ppid, Nsend, state.chid, state.coid);
+    }
 
     register int chid = state.chid;
     register int coid = state.coid;
@@ -358,7 +421,7 @@ void iterator(int rounds, int Nsend)
 	// Send message to process ring
 	int  err  = MsgSend(coid, msg_transmit, Nsend, msg_reply, sizeof(msg_reply));
 
-	sched_yieald();
+//	sched_yieald();
 
         // Wait message return from process ring
 	int rcvid = MsgReceive(chid, msg_receive, sizeof(msg_receive),  NULL);
@@ -370,7 +433,7 @@ void iterator(int rounds, int Nsend)
             kill(0, SIGKILL);
             return exit(1);
         }
-        #if DEBUG
+        #if 0  // DEBUG
         printf("iterator rounds=%d\n", rounds);
         #endif // DEBUG
         #endif // __linux
@@ -378,11 +441,11 @@ void iterator(int rounds, int Nsend)
 }
 
 
-void run_iterator(int Nsend )
+int  run_iterator(int Nsend )
 {
-        int  ppid, chid, fd;
+        timespec_t  tp_start, tp_end;
 
-        printf("Run %d rounds with %d processes\n", rounds, procs);
+        int  ppid, chid, fd;
 
         // Get last process's PID and channel ID for connection
         if (readfile(FILENAME, &ppid, &chid) < 0) {
@@ -401,7 +464,15 @@ void run_iterator(int Nsend )
         state.coid = coid;  // "fd(WRITE)"
         #endif // __linux
 
+        printf("\n");
+        printf("Run %d rounds with %d processes\n\n", rounds, procs);
+        printf("Start test...\n");
+
+        clock_gettime(CLOCK_MONOTONIC, &tp_start);
         iterator(rounds, Nsend);
+        clock_gettime(CLOCK_MONOTONIC, &tp_end);
+        int us = diff_tp_us(&tp_start, &tp_end);
+        return us;
 }
 
 
@@ -415,9 +486,9 @@ void print_usage(int argc, char *argv[], char *usage)
 void get_opts(int argc, char *argv[])
 {
         int   c;
- 	char* usage = "[-W <warmup>] [-N <repetitions>]\n";
+	char* usage = "[-W <warmup>] [-N <repetitions>] [P <processes>] [-R] [-F]\n";
 
-	while (( c = getopt(argc, argv, "W:N:")) != EOF) {
+	while (( c = getopt(argc, argv, "W:N:P:FRv")) != EOF) {
             switch(c) {
 		case 'W':
 			warmup = atoi(optarg);
@@ -426,6 +497,19 @@ void get_opts(int argc, char *argv[])
 		case 'N':
 			rounds = atoi(optarg);
 			if (rounds < 1) print_usage(argc, argv, usage);
+			break;
+		case 'P':
+			procs = atoi(optarg);
+			if (procs < 2) print_usage(argc, argv, usage);
+			break;
+		case 'R':
+			scheduler = SCHED_RR;
+			break;
+		case 'F':
+			scheduler = SCHED_FIFO;
+			break;
+		case 'v':
+			verbose  += 1;
 			break;
 		default:
 			print_usage(argc, argv, usage);
@@ -443,6 +527,8 @@ void init_state(void)
     state.chid       = ChannelCreate(0);  // fd(READ)
     if (state.chid  == -1)
         exit(1);
+
+    remove(FILENAME);  // Remove old fork chain's "PID chid" file
 }
 
 
@@ -450,6 +536,8 @@ void init_state(void)
 int set_scheduling(int policy, int priority)
 {
     struct sched_param  param;
+
+    printf("Use %s task switching policy\n", policy == SCHED_FIFO ? "SCHED_FIFO" : "SCHED_RR");
 
     // Get current (dafault parameters)
     int ret = sched_getparam( getpid(), &param);
@@ -486,48 +574,44 @@ void fork_msgring(int procs)
                     state.pid     = getpid();
                     state.ppid    = getppid();
 
-                    #if DEBUG || 1
-                    if (fork_count > 0)
-                        printf("child(%d):    pid=%d, ppid=%d, chid=%X\n", ix, state.pid, state.ppid, state.chid);
-                    else
-                        printf("child(%d):    pid=%d, ppid=%d, chid=%X (last process)\n", ix, state.pid, state.ppid, state.chid);
-                    #endif // DEBUG
-
-                    // if (fork_count > 0)
-                    {
-                        // fd(READ) channel ID
-                        int chid = ChannelCreate(0);
-                        if (chid == -1)
-                        {
-                            printf("child(%d):   chid=ERROR\n", ix);
-                            exit(1);
-                        }
-                        // fd(WRITE) channel ID
-                        int coid = ConnectAttach(0, state.ppid, state.chid, _NTO_SIDE_CHANNEL, 0);
-                        if (coid == -1)
-                        {
-                            printf("child(%d):   coid=ERROR state.ppid=%d state.chid=%X\n", ix, state.ppid, state.chid);
-                            exit(1);
-                        }
-                        state.chid = chid;  // "fd(READ)"
-                        state.coid = coid;  // "fd(WRITE)"
+                    if (verbose) {
+                        if (fork_count > 0)
+                            printf("child(%d):    pid=%d, ppid=%d, chid=%X\n", ix, state.pid, state.ppid, state.chid);
+                        else
+                            printf("child(%d):    pid=%d, ppid=%d, chid=%X (last process)\n", ix, state.pid, state.ppid, state.chid);
                     }
 
-                    if (!fork_count)  // Last forked process?
+                    // fd(READ) channel ID
+                    int chid = ChannelCreate(0);
+                    if (chid == -1)
                     {
+                        printf("child(%d):   chid=ERROR\n", ix);
+                        exit(1);
+                    }
+                    // fd(WRITE) channel ID
+                    int coid = ConnectAttach(0, state.ppid, state.chid, _NTO_SIDE_CHANNEL, 0);
+                    if (coid == -1)
+                    {
+                        printf("child(%d):   coid=ERROR state.ppid=%d state.chid=%X\n", ix, state.ppid, state.chid);
+                        exit(1);
+                    }
+                    state.chid = chid;  //  "fd(READ)"
+                    state.coid = coid;  //  "fd(WRITE)"
+
+                    if (!fork_count)  { //  Last forked process?
                         writefile(FILENAME, state.pid, state.chid);
                     }
 
-                    #if DEBUG
-                    printf("child(%d):   chid=%X, coid=%X\n", ix, state.chid, state.coid);
-                    #endif // DEBUG
+                    if (verbose) {
+                        printf("child(%d):   chid=%X, coid=%X\n", ix, state.chid, state.coid);
+                    }
                     break;
 
                 default:
                     // Parent process
-                    #if DEBUG || 1
-                    printf("parent(%d):   pid=%d, new_pid(%d)=%d, chid=%X, coid=%X\n", ix-1, getpid(), ix, new_pid, state.chid, state.coid);
-                    #endif // DEBUG
+                    if (verbose) {
+                        printf("parent(%d):   pid=%d, new_pid(%d)=%d, chid=%X, coid=%X\n", ix-1, getpid(), ix, new_pid, state.chid, state.coid);
+                    }
                     break;
             }
         }
@@ -537,26 +621,32 @@ void fork_msgring(int procs)
 
 int main(int argc, char*argv[])
 {
-    timespec_t  tp_start, tp_end;
-
     get_opts(argc, argv);
     init_state();
 
     fork_msgring(procs);
-    set_scheduling(SCHED_RR, 10);  // SCHED_FIFO or SCHED_RR
+    if (scheduler)
+        set_scheduling(scheduler, 10);  // SCHED_FIFO or SCHED_RR
 
     if (state.ppid) {
         jumper(Nsend);  // (Sub)Process should not return from jumper()!
     }
-    else {              // Wait for all process to wake up
-        sleep(1);
-        clock_gettime(CLOCK_MONOTONIC, &tp_start);
-        run_iterator(Nsend);
-        clock_gettime(CLOCK_MONOTONIC, &tp_end);
+    else {
+        int us = run_iterator(Nsend);
 
-        printf("Test run time %ld us\n", diff_tp_us(&tp_start, &tp_end));
+        printf("\n");
+        printf("Test run time: %d us\n", us);
+        printf("Msg passes:    %d (%d procs * %d rounds)\n", procs*rounds, procs, rounds);
+        printf("Msg pass time: %d us / pass (%d us / %d pass)\n", us/(procs*rounds), us, procs*rounds);
+
+        us = run_iterator(Nsend);
+
+        printf("\n");
+        printf("Test run time: %d us\n", us);
+        printf("Msg passes:    %d (%d procs * %d rounds)\n", procs*rounds, procs, rounds);
+        printf("Msg pass time: %d us / pass (%d us / %d pass)\n", us/(procs*rounds), us, procs*rounds);
     }
-    sleep(1);
+    remove(FILENAME);
     kill(0, SIGKILL);   // Kill also all sub process
     return 0;
 }
