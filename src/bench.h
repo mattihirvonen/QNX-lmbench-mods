@@ -4,6 +4,31 @@
 #ifndef _BENCH_H
 #define _BENCH_H
 
+//---------------------------------------------------------------------
+
+#include <string.h>     // memset(), memcpy()
+#include <strings.h>    // bzero(),  copy()  -- gcc: old deprecated functions
+
+int PIPE(int pipefd[2], void *cookie, char *txt);
+
+
+// void bzero(void *s, size_t n);
+static void *bzero2memset(void *s, size_t count)
+{
+    return memset(s, 0, count);
+}
+#define bzero  bzero2memset
+
+
+// void bcopy(const void *src, void *dest, size_t n);
+static void bcopy2memcpy(const void *src, void *dest, size_t count)
+{
+    memcpy(dest, src, count);
+}
+#define bcopy  bcopy2memcpy
+
+//--------------------------------------------------------------------
+
 #ifdef WIN32
 #include <windows.h>
 typedef unsigned char bool_t;
@@ -347,16 +372,5 @@ extern int sched_pin(int cpu);
 #define RPC_EXIT ((u_long)2)
 extern char *rpc_xact_1();
 extern char *client_rpc_xact_1();
-
-//---------------------------------------------------------------------
-
-int PIPE(int pipefd[2], void *cookie, char *txt);
-
-#define bzero  bzero2memset
-
-static void bzero2memset(void *buf, int count)
-{
-    memset(buf, 0, count);
-}
 
 #endif /* _BENCH_H */
