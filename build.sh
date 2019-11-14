@@ -24,7 +24,7 @@ do_compile() {
 
 do_single() {
     cd   src
-    $CC  -DHAVE_socklen_t -o $1  $1.c
+    $CC  -DHAVE_socklen_t -o $1  $1.c  lib_timing.c  PIPE.c
     mv   $1  ..
     cd   ..
 }

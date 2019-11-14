@@ -1,3 +1,5 @@
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,6 +11,8 @@
 #include <sched.h>          // getprio(), setprio()
 #include <sys/resource.h>   // getprio(), setprio()
 #include "msgring.h"
+
+long bread(void* buf, long nbytes);
 
 #define  QMSG_BUFFER_SIZE  256
 #define  MAXPROCS          1000
@@ -47,6 +51,8 @@ int      warmup   = 1;
 int      policy   = 0;
 int      priority = 1;
 int      verbose  = 0;
+int      process_size = 0;   // N * 1024 bytes
+void    *process_data = 0;
 
 //-----------------------------------------------------------------------------------------------
 
@@ -62,6 +68,19 @@ void diff_tp( struct timespec *diff, const struct timespec *tp_start, const stru
         diff->tv_sec  = tp_end->tv_sec  - tp_start->tv_sec;
         diff->tv_nsec = tp_end->tv_nsec - tp_start->tv_nsec;
     }
+}
+
+int64_t diff_tp_ns( const struct timespec *tp_start, const struct timespec *tp_end )
+{
+    struct timespec  diff;
+    int64_t          ns;
+
+    diff_tp( &diff, tp_start, tp_end );
+
+    ns  = diff.tv_nsec;
+    ns += diff.tv_sec  * 1000000000;
+
+    return ns;
 }
 
 int64_t diff_tp_us( const struct timespec *tp_start, const struct timespec *tp_end )
@@ -90,9 +109,22 @@ int64_t diff_tp_ms( const struct timespec *tp_start, const struct timespec *tp_e
     return ms;
 }
 
+
+//-----------------------------------------------------------------------------------------------
+// Dummy satify for  lib_timing.c::handle_scheduler()  request
+
+int handle_scheduler(int x, int y, int z)
+{
+    return 0;
+}
+
 //-----------------------------------------------------------------------------------------------
 // Old code from pipe(s) method using read() and write()
 
+ssize_t READ(int fd, void *buf, size_t count);
+ssize_t WRITE(int fd, const void *buf, size_t count);
+
+#if  0
 #ifndef __linux
 ssize_t READ(int fd, void *buf, size_t count)
 {
@@ -126,6 +158,7 @@ ssize_t WRITE(int fd, const void *buf, size_t count)
 	return count;
 }
 #endif // __linux
+#endif // 0
 
 //-------------------------------------------------------------------------------------
 // Old code from pipe(s) method using read() and write()
@@ -389,6 +422,9 @@ void jumper(int Nsend)
 	// Release previous process from dead lock
         int   err = MsgReply(rcvid, EOK, NULL, 0);
 
+        if ( process_data && process_size)
+            bread(process_data, process_size);
+
         // Forfard message to next process
         err |= MsgSend(coid, msg_receive, Nsend, msg_reply, sizeof(msg_reply));
 
@@ -422,7 +458,12 @@ void iterator(int rounds, int Nsend)
 	// Send message to process ring
 	int  err  = MsgSend(coid, msg_transmit, Nsend, msg_reply, sizeof(msg_reply));
 
-//	sched_yieald();
+	#if 0
+	sched_yield();
+	#endif
+
+        if ( process_data && process_size)
+            bread(process_data, process_size);
 
         // Wait message return from process ring
 	int rcvid = MsgReceive(chid, msg_receive, sizeof(msg_receive),  NULL);
@@ -442,7 +483,7 @@ void iterator(int rounds, int Nsend)
 }
 
 
-int  run_iterator(int Nsend )
+int64_t  run_iterator(int Nsend )
 {
         timespec_t  tp_start, tp_end;
 
@@ -472,8 +513,8 @@ int  run_iterator(int Nsend )
         clock_gettime(CLOCK_MONOTONIC, &tp_start);
         iterator(rounds, Nsend);
         clock_gettime(CLOCK_MONOTONIC, &tp_end);
-        int us = diff_tp_us(&tp_start, &tp_end);
-        return us;
+        int64_t ns = diff_tp_ns(&tp_start, &tp_end);
+        return  ns;
 }
 
 
@@ -487,9 +528,9 @@ void print_usage(int argc, char *argv[], char *usage)
 void get_opts(int argc, char *argv[])
 {
         int   c;
-	char* usage = "[-W <warmup>] [-N <repetitions>] [P <processes>] [-R <priority>] [-F <priority>]\n";
+	char* usage = "[-W <warmup>] [-N <repetitions>] [P <processes>] [-R <priority>] [-F <priority>] [-s <sizeKB>]\n";
 
-	while (( c = getopt(argc, argv, "W:N:P:F:R:v")) != EOF) {
+	while (( c = getopt(argc, argv, "W:N:P:R:F:s:v")) != EOF) {
             switch(c) {
 		case 'W':
 			warmup = atoi(optarg);
@@ -513,6 +554,11 @@ void get_opts(int argc, char *argv[])
 			if (priority < 1) print_usage(argc, argv, usage);
 			policy = SCHED_FIFO;
 			break;
+                case 's':
+			process_size = atoi(optarg);
+			if (process_size < 1) print_usage(argc, argv, usage);
+			process_size = process_size * 1024;
+                        break;
 		case 'v':
 			verbose  += 1;
 			break;
@@ -542,7 +588,7 @@ int set_scheduling(int policy, int priority)
 {
     struct sched_param  param;
 
-    if (verbose) {
+    if (verbose && policy && priority) {
         printf("getpid() = %d use %s task switching policy with priority %d\n",
                 getpid(), policy == SCHED_FIFO ? "SCHED_FIFO" : "SCHED_RR", priority);
     }
@@ -626,12 +672,51 @@ void fork_msgring(int procs)
 }
 
 
-void print_result(int us, int procs, int rounds)
+void *create_process_data(int kB)
 {
+    if (process_size) {
+        process_data = malloc(process_size);
+        if (!process_data) {
+             perror("malloc");
+             kill(0,SIGKILL);
+        }
+        memset(process_data, 0, process_size);
+    }
+    return process_data;
+}
+
+
+int measure_data_processing(void *process_data, int process_size)
+{
+    #define CALIBRATION_LOOPS  10000
+
+    timespec_t  tp_start, tp_end;
+    int  i;
+
+    printf("Calibrate data access time (%d bytes)...\n", process_size);
+    sleep(5);
+
+    bread(process_data, process_size / 1024);
+    clock_gettime(CLOCK_MONOTONIC, &tp_start);
+    for (i = 0; i < CALIBRATION_LOOPS; i++) {
+        bread(process_data, process_size);
+    }
+    clock_gettime(CLOCK_MONOTONIC, &tp_end);
+    int64_t ns  = diff_tp_ns(&tp_start, &tp_end);
+    return  ns /= CALIBRATION_LOOPS;
+}
+
+
+void print_result(int64_t ns, int procs, int rounds, int64_t ns_process_data)
+{
+    int us = ns / 1000;
     printf("\n");
-    printf("Test run time: %d us\n", us);
-    printf("Msg passes:    %d (%d procs * %d rounds)\n", procs*rounds, procs, rounds);
-    printf("Msg pass time: %d us / pass (%d us / %d pass)\n", us/(procs*rounds), us, procs*rounds);
+    printf("Test run time:       %d us\n", us);
+    printf("Msg passes:          %d (%d procs * %d rounds)\n", procs*rounds, procs, rounds);
+    printf("\n");
+    printf("Msg pass time:       %d us / pass (%d us / %d pass)\n", us/(procs*rounds), us, procs*rounds);
+    printf("- data process time: %d us\n", (int)(ns_process_data/1000));
+    printf("= ctx switch time:   %d us\n", (int)((ns/(procs*rounds)) - ns_process_data)/1000);
 }
 
 
@@ -640,10 +725,14 @@ int main(int argc, char*argv[])
     get_opts(argc, argv);
     init_state();
 
-    printf("Use %s task switching policy with priority %d\n",
-            policy == SCHED_FIFO ? "SCHED_FIFO" : "SCHED_RR", priority);
+    if (policy && priority) {
+        printf("Use %s task switching policy with priority %d\n",
+                policy == SCHED_FIFO ? "SCHED_FIFO" : "SCHED_RR", priority);
+    }
 
     fork_msgring(procs);
+    process_data = create_process_data(process_size);
+
     if (policy)
         set_scheduling(policy, priority);  // SCHED_FIFO or SCHED_RR
 
@@ -651,13 +740,18 @@ int main(int argc, char*argv[])
         jumper(Nsend);  // (Sub)Process should not return from jumper()!
     }
     else {
-        int us;
+        int64_t ns, ns_process_data = 0;
 
-        us = run_iterator(Nsend);
-        print_result(us, procs, rounds);
+        /// TODO: FIX wait all process to start before measure data_process timing
+        if (process_data && process_size) {
+            ns_process_data = measure_data_processing(process_data, process_size);
+        }
 
-        us = run_iterator(Nsend);
-        print_result(us, procs, rounds);
+        ns = run_iterator(Nsend);
+        print_result(ns, procs, rounds, ns_process_data);
+
+        ns = run_iterator(Nsend);
+        print_result(ns, procs, rounds, ns_process_data);
     }
     remove(FILENAME);
     kill(0, SIGKILL);   // Kill also all sub process
