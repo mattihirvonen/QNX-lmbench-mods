@@ -40,12 +40,13 @@ typedef struct {
 
 state_t  state;
 int      fork_pids[MAXPROCS];
-int      procs  = 4;
-int      rounds = 5;
-int      Nsend  = 1;
-int      warmup = 1;
-int      scheduler;
-int      verbose;
+int      procs    = 4;
+int      rounds   = 5;
+int      Nsend    = 1;
+int      warmup   = 1;
+int      policy   = 0;
+int      priority = 1;
+int      verbose  = 0;
 
 //-----------------------------------------------------------------------------------------------
 
@@ -486,9 +487,9 @@ void print_usage(int argc, char *argv[], char *usage)
 void get_opts(int argc, char *argv[])
 {
         int   c;
-	char* usage = "[-W <warmup>] [-N <repetitions>] [P <processes>] [-R] [-F]\n";
+	char* usage = "[-W <warmup>] [-N <repetitions>] [P <processes>] [-R <priority>] [-F <priority>]\n";
 
-	while (( c = getopt(argc, argv, "W:N:P:FRv")) != EOF) {
+	while (( c = getopt(argc, argv, "W:N:P:F:R:v")) != EOF) {
             switch(c) {
 		case 'W':
 			warmup = atoi(optarg);
@@ -503,10 +504,14 @@ void get_opts(int argc, char *argv[])
 			if (procs < 2) print_usage(argc, argv, usage);
 			break;
 		case 'R':
-			scheduler = SCHED_RR;
+			priority = atoi(optarg);
+			if (priority < 1) print_usage(argc, argv, usage);
+			policy = SCHED_RR;
 			break;
 		case 'F':
-			scheduler = SCHED_FIFO;
+			priority = atoi(optarg);
+			if (priority < 1) print_usage(argc, argv, usage);
+			policy = SCHED_FIFO;
 			break;
 		case 'v':
 			verbose  += 1;
@@ -537,8 +542,10 @@ int set_scheduling(int policy, int priority)
 {
     struct sched_param  param;
 
-    printf("Use %s task switching policy\n", policy == SCHED_FIFO ? "SCHED_FIFO" : "SCHED_RR");
-
+    if (verbose) {
+        printf("getpid() = %d use %s task switching policy with priority %d\n",
+                getpid(), policy == SCHED_FIFO ? "SCHED_FIFO" : "SCHED_RR", priority);
+    }
     // Get current (dafault parameters)
     int ret = sched_getparam( getpid(), &param);
 
@@ -619,32 +626,38 @@ void fork_msgring(int procs)
 }
 
 
+void print_result(int us, int procs, int rounds)
+{
+    printf("\n");
+    printf("Test run time: %d us\n", us);
+    printf("Msg passes:    %d (%d procs * %d rounds)\n", procs*rounds, procs, rounds);
+    printf("Msg pass time: %d us / pass (%d us / %d pass)\n", us/(procs*rounds), us, procs*rounds);
+}
+
+
 int main(int argc, char*argv[])
 {
     get_opts(argc, argv);
     init_state();
 
+    printf("Use %s task switching policy with priority %d\n",
+            policy == SCHED_FIFO ? "SCHED_FIFO" : "SCHED_RR", priority);
+
     fork_msgring(procs);
-    if (scheduler)
-        set_scheduling(scheduler, 10);  // SCHED_FIFO or SCHED_RR
+    if (policy)
+        set_scheduling(policy, priority);  // SCHED_FIFO or SCHED_RR
 
     if (state.ppid) {
         jumper(Nsend);  // (Sub)Process should not return from jumper()!
     }
     else {
-        int us = run_iterator(Nsend);
-
-        printf("\n");
-        printf("Test run time: %d us\n", us);
-        printf("Msg passes:    %d (%d procs * %d rounds)\n", procs*rounds, procs, rounds);
-        printf("Msg pass time: %d us / pass (%d us / %d pass)\n", us/(procs*rounds), us, procs*rounds);
+        int us;
 
         us = run_iterator(Nsend);
+        print_result(us, procs, rounds);
 
-        printf("\n");
-        printf("Test run time: %d us\n", us);
-        printf("Msg passes:    %d (%d procs * %d rounds)\n", procs*rounds, procs, rounds);
-        printf("Msg pass time: %d us / pass (%d us / %d pass)\n", us/(procs*rounds), us, procs*rounds);
+        us = run_iterator(Nsend);
+        print_result(us, procs, rounds);
     }
     remove(FILENAME);
     kill(0, SIGKILL);   // Kill also all sub process
