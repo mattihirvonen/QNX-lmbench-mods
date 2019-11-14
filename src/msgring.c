@@ -702,6 +702,10 @@ int measure_data_processing(void *process_data, int process_size)
         bread(process_data, process_size);
     }
     clock_gettime(CLOCK_MONOTONIC, &tp_end);
+
+    int nsTdiff = diff_tp_ns(&tp_start, &tp_end) / CALIBRATION_LOOPS;
+    printf("Data access time (%d bytes) = %d ns\n", process_size, nsTdiff);
+
     int64_t ns  = diff_tp_ns(&tp_start, &tp_end);
     return  ns /= CALIBRATION_LOOPS;
 }
@@ -715,7 +719,7 @@ void print_result(int64_t ns, int procs, int rounds, int64_t ns_process_data)
     printf("Msg passes:          %d (%d procs * %d rounds)\n", procs*rounds, procs, rounds);
     printf("\n");
     printf("Msg pass time:       %d us / pass (%d us / %d pass)\n", us/(procs*rounds), us, procs*rounds);
-    printf("- data process time: %d us\n", (int)(ns_process_data/1000));
+    printf("- data access time:  %d us\n", (int)(ns_process_data/1000));
     printf("= ctx switch time:   %d us\n", (int)((ns/(procs*rounds)) - ns_process_data)/1000);
 }
 
