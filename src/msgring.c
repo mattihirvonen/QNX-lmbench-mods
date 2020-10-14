@@ -251,7 +251,7 @@ int ChannelCreate(int arg);
 int ConnectAttach(int arg1, int pid, int chid, int arg2, int arg3);
 int MsgSend(int coid, void *txbuf, int Nsend, void *rxbuf, int rxsize);
 int MsgReceive(int chid, void *rxbuf, int rxsize, int arg);
-int MsgReply(int rcvid, int EOK, int arg1, int arg2);
+int MsgReply(int rcvid, int status, int arg1, int arg2);
 
 
 int ChannelCreate(int arg)
@@ -319,7 +319,7 @@ int MsgReceive(int chid, void *rxbuf, int rxsize, int arg)
 }
 
 
-int MsgReply(int rcvid, int EOK, int arg1, int arg2)
+int MsgReply(int rcvid, int status, int arg1, int arg2)
 {
     int ix = find_pipetable_ix(rcvid);
     return 0;
@@ -331,7 +331,7 @@ int  err  = ChannelCreate(int arg);
 int coid  = ConnectAttach(0, state.ppid, state.chid, _NTO_SIDE_CHANNEL, 0);
 int  err  = MsgSend(coid, msg_receive, Nsend, msg_reply, sizeof(msg_reply));
 int rcvid = MsgReceive(chid, msg_receive, sizeof(msg_receive),  NULL);
-int  err  = MsgReply(rcvid, EOK, NULL, 0);
+int  err  = MsgReply(rcvid, status, NULL, 0);
 */
 
 #endif
