@@ -10,7 +10,7 @@
 #include <sys/neutrino.h>   // Msg....()
 #endif
 
-#ifndef state_t
+#ifndef state_t     // !!!!!!
 typedef struct {
     int chid, chid_pid, pid;
 } state_t;
@@ -44,8 +44,8 @@ int  PIPE(int pipefd[2], void *cookie, char *txt)
 	int status =  pipe(pipefd);
 	if (verbose_level) {
 	    if (cookie)
-            printf("pipe %13s: getpid()=%d, fdin=%2d, fdout=%2d, state->pid_chid=%d\n",
-	                txt ? txt:"", getpid(), pipefd[0], pipefd[1], state->pid_chid);
+            printf("pipe %13s: getpid()=%d, fdin=%2d, fdout=%2d, state->chid_pid=%d\n",
+	                txt ? txt:"", getpid(), pipefd[0], pipefd[1], state->chid_pid);
 	    else
 	        printf("pipe %13s: getpid()=%d, fdin=%2d, fdout=%2d\n",
 	                txt? txt:"", getpid(), pipefd[0], pipefd[1]);
@@ -100,7 +100,7 @@ ssize_t READ(int fd, void *buf, size_t count)
 ssize_t WRITE(int fd, const void *buf, size_t count)
 {
 	char msg_reply[QMSG_BUFFER_SIZE];
-	
+
 	int  chid = fd;
 	int  err  = MsgSend(chid, buf, count, msg_reply, sizeof(msg_reply));
 	return (err == -1) ? err : count;
