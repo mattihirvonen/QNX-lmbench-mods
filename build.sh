@@ -32,16 +32,22 @@ do_compile() {
 
 
 # Use minimal "library" set
-do_single() {
+do_minimal() {
     cd   src
-    $CC  -DHAVE_socklen_t -o $1  $1.c  lib_timing.c  PIPE.c
-    mv   $1  ..
+    $CC  -DHAVE_socklen_t  $OPT  -o $OUT/$1.bin  $1.c  getopt.c  lib_timing.c  lib_sched.c  PIPE.c
+    cd   ..
+}
+
+
+do_msgring() {
+    cd   src
+    $CC  -DHAVE_socklen_t  $OPT  -o  $OUT/$1.bin  $1.c  lib_timing.c  PIPE.c
     cd   ..
 }
 
 
 do_build_linux() {
-    do_single   msgring
+    do_msgring  msgring
 #   do_compile  hello
 
     do_compile  lat_pipe
@@ -51,8 +57,8 @@ do_build_linux() {
 #   do_compile  clock
 
     do_compile  cache
-    do_compile  bw_mem
-    do_compile  bw_file_rd
+    do_minimal  bw_mem
+    do_minimal  bw_file_rd
     do_compile  lat_mem_rd
     do_compile  lat_dram_page
 
@@ -60,9 +66,9 @@ do_build_linux() {
     do_compile  lat_pagefault
 
     do_compile  tlb
-    do_compile  lat_ops
     do_compile  line
-    do_compile  lat_syscall
+    do_minimal  lat_ops
+    do_minimal  lat_syscall
 
     do_compile  par_mem       # ei hyödyllinen
     do_compile  par_ops       # ei hyödyllinen
@@ -70,7 +76,7 @@ do_build_linux() {
 
 
 do_build_qnx() {
-    do_single   msgring  # lib_sched.c:(.text+0x40): multiple definition of `handle_scheduler'
+    do_msgring  msgring       # lib_sched.c:(.text+0x40): multiple definition of `handle_scheduler'
 #   do_single   hello
 
     do_compile  bw_mem
@@ -94,6 +100,7 @@ do_build_qnx() {
 }
 
 
+# QNX cross compiling environment under windows/cygwin defines:  OSTYPE=msys
 if [ $OSTYPE == msys ]
 then
     do_build_qnx
