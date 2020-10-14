@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="QNX-lmbench" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="bin/Debug/QNX-lmbench" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Debug/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+				</Compiler>
+			</Target>
+			<Target title="Release">
+				<Option output="bin/Release/QNX-lmbench" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Release/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+		</Compiler>
+		<Unit filename="build.sh" />
+		<Unit filename="src/PIPE.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/bench.h" />
+		<Unit filename="src/bw_mem.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/cache.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/lat_ctx.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/lat_ctx_qnx.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/lat_dram_page.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/lat_mem_rd.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/lat_pipe.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/lib_debug.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/lib_debug.h" />
+		<Unit filename="src/lib_mem.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/lib_mem.h" />
+		<Unit filename="src/lib_sched.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/lib_stats.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/lib_timing.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/lib_unix.h" />
+		<Unit filename="src/msgring.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/msgring.h" />
+		<Extensions>
+			<envvars />
+			<code_completion />
+			<lib_finder disable_auto="1" />
+			<debugger />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>

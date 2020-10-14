@@ -1,0 +1,8 @@
+
+QCC= qcc -Vgcc_ntoarmv7le
+GCC= gcc'
+
+LIB= getopt.c  PIPE.c  lib_timing.c  lib_sched.c  lib_mem.c  lib_stats.c  lib_debug.c  -lm
+
+ 
+

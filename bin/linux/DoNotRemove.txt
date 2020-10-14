@@ -1,0 +1,3 @@
+DO not remove this file.
+This is for directory structure of "build.sh" script.
+
