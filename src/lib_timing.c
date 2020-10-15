@@ -203,7 +203,7 @@ benchmp(benchmp_f initialize,
 	}
 
 	/* Create the necessary pipes for control */
-	#if 1
+	#if QNXMSG
 	if (PIPE(response,cookie,"response") < 0
 	    || PIPE(start_signal,cookie,"start_signal") < 0
 	    || PIPE(result_signal,cookie,"result_signal") < 0

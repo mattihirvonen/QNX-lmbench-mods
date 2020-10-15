@@ -41,7 +41,7 @@ do_minimal() {
 
 do_msgring() {
     cd   src
-    $CC  -DHAVE_socklen_t  $OPT  -o  $OUT/$1.bin  $1.c  lib_timing.c  PIPE.c
+    $CC  -DHAVE_socklen_t -DQNXMSG  $OPT  -o  $OUT/$1.bin  $1.c  lib_timing.c  PIPE.c
     cd   ..
 }
 
