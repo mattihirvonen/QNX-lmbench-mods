@@ -120,8 +120,9 @@ int64_t diff_tp_ns( const struct timespec *tp_start, const struct timespec *tp_e
 
     diff_tp( &diff, tp_start, tp_end );
 
-    ns  = diff.tv_nsec;
-    ns += diff.tv_sec  * 1000000000;
+    ns  = diff.tv_sec;
+    ns *= 1000000000;
+    ns += diff.tv_nsec;
 
     return ns;
 }
@@ -133,8 +134,9 @@ int64_t diff_tp_us( const struct timespec *tp_start, const struct timespec *tp_e
 
     diff_tp( &diff, tp_start, tp_end );
 
-    us  = diff.tv_nsec / 1000;
-    us += diff.tv_sec  * 1000000;
+    us  = diff.tv_sec;
+    us *= 1000000;
+    us += diff.tv_nsec / 1000;
 
     return us;
 }
@@ -146,8 +148,9 @@ int64_t diff_tp_ms( const struct timespec *tp_start, const struct timespec *tp_e
 
     diff_tp( &diff, tp_start, tp_end );
 
-    ms  = diff.tv_nsec / 1000000;
-    ms += diff.tv_sec  * 1000;
+    ms  = diff.tv_sec;
+    ms *= 1000;
+    ms += diff.tv_nsec / 1000000;
 
     return ms;
 }
