@@ -16,7 +16,7 @@ long bread(void* buf, long nbytes);
 
 #define  QMSG_BUFFER_SIZE  256
 #define  MAXPROCS          1000
-#define FILENAME           "/tmp/msgring.$"
+#define  FILENAME          "/tmp/msgring.$"
 
 #ifndef  DEBUG
 #define  DEBUG 1
@@ -55,6 +55,41 @@ int      process_size = 0;   // N * 1024 bytes
 void    *process_data = 0;
 
 //-----------------------------------------------------------------------------------------------
+
+#ifndef  __linux
+// http://www.qnx.com/developers/docs/7.0.0/#com.qnx.doc.neutrino.lib_ref/topic/c/clockcycles.html
+// extern int clock_gettime(clockid_t __clock_id, struct timespec *__tp);
+
+int clock_gettime( clockid_t  __clock_id, struct timespec *__tp )
+{
+    // Note:  __clock_id == CLOCK_MONOTONIC
+    #if 1
+    uint64_t   ns = ClockCycles() * 15;  // 66 MHz == 15.1515151515... ns
+
+    __tp->tv_sec  = ns / 1000000000;
+    __tp->tv_nsec = ns - (__tp->tv_sec * 1000000000);    // CPU core do not have hard integer divide command!
+    #else
+    // ToDo: optimize without div command
+    #endif
+    return 0;
+}
+
+
+int gettimeofday(struct timeval *tv, void *tz)
+{
+    // Note:  CLOCK_MONOTONIC
+    #if 1
+    uint64_t us = ClockCycles() * 15152;  // 66 MHz == 15.1515151515... ns
+
+    tv->tv_sec  = us / 1000000;
+    tv->tv_usec = us - (tv->tv_sec * 1000000);    // CPU core do not have hard integer divide command!
+    #else
+    // ToDo: optimize without div command
+    #endif
+    return 0;
+}
+#endif
+
 
 void diff_tp( struct timespec *diff, const struct timespec *tp_start, const struct timespec *tp_end )
 {
