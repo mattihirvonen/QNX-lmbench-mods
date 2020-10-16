@@ -720,12 +720,12 @@ void print_result(int64_t ns, int procs, int rounds, int64_t ns_process_data)
 
     us /= 1000.0;
     printf("\n");
-    printf("Test run time:       %f us\n", us);
+    printf("Test run time:       %.3f us\n", us);
     printf("Msg passes:          %d (%d procs * %d rounds)\n", procs*rounds, procs, rounds);
     printf("\n");
-    printf("Msg pass time:       %f us / pass (%f us / %d pass)\n", us/(double)(procs*rounds), us, procs*rounds);
-    printf("- data access time:  %f us\n", ((double)ns_process_data) / 1000.0);
-    printf("= ctx switch time:   %f us\n", ((double)((ns/(procs*rounds)) - ns_process_data))/1000.0);
+    printf("Msg pass time:       %7.3f us / pass (%f us / %d pass)\n", us/(double)(procs*rounds), us, procs*rounds);
+    printf("- data access time:  %7.3f us\n", ((double)ns_process_data) / 1000.0);
+    printf("= ctx switch time:   %7.3f us\n", ((double)((ns/(procs*rounds)) - ns_process_data))/1000.0);
 }
 
 
