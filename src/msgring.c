@@ -56,49 +56,6 @@ void    *process_data = 0;
 
 //-----------------------------------------------------------------------------------------------
 
-#ifndef  __linux
-// http://www.qnx.com/developers/docs/7.0.0/#com.qnx.doc.neutrino.lib_ref/topic/c/clockcycles.html
-// extern int clock_gettime(clockid_t __clock_id, struct timespec *__tp);
-
-int clock_gettime( clockid_t  __clock_id, struct timespec *__tp )
-{
-    // Note:  __clock_id == CLOCK_MONOTONIC
-    #if 1
-    uint64_t  nss, ns = ClockCycles();
-
-    ns  *= 15;                 // 66 MHz == 15.1515151515... ns
-    nss  = ns;
-    nss /= 1000000000;         // "integer" part of seconds
-    __tp->tv_sec  = nss;
-    nss *= 1000000000;
-    __tp->tv_nsec = ns - nss;  // CPU core do not have hard integer divide command!
-    #else
-    // ToDo: optimize without div command
-    #endif
-    return 0;
-}
-
-
-int gettimeofday(struct timeval *tv, void *tz)
-{
-    // Note:  CLOCK_MONOTONIC
-    #if 1
-    uint64_t  uss, us = ClockCycles();
-
-    us  /= 66;                 // 66 MHz == 15.1515151515... ns
-    uss  = us;
-    uss /= 1000000;            // "integer" part of seconds
-    tv->tv_sec  = uss;
-    uss *= 1000000;
-    tv->tv_usec = us - uss;    // CPU core do not have hard integer divide command!
-    #else
-    // ToDo: optimize without div command
-    #endif
-    return 0;
-}
-#endif
-
-
 void diff_tp( struct timespec *diff, const struct timespec *tp_start, const struct timespec *tp_end )
 {
     if (tp_start->tv_nsec > tp_end->tv_nsec)

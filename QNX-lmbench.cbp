@@ -35,6 +35,9 @@
 		<Unit filename="src/PIPE.c">
 			<Option compilerVar="CC" />
 		</Unit>
+		<Unit filename="src/TIME.c">
+			<Option compilerVar="CC" />
+		</Unit>
 		<Unit filename="src/bench.h" />
 		<Unit filename="src/bw_mem.c">
 			<Option compilerVar="CC" />
