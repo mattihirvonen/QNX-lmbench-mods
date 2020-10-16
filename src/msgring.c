@@ -64,10 +64,14 @@ int clock_gettime( clockid_t  __clock_id, struct timespec *__tp )
 {
     // Note:  __clock_id == CLOCK_MONOTONIC
     #if 1
-    uint64_t   ns = ClockCycles() * 15;  // 66 MHz == 15.1515151515... ns
+    uint64_t  nss, ns = ClockCycles();
 
-    __tp->tv_sec  = ns / 1000000000;
-    __tp->tv_nsec = ns - (__tp->tv_sec * 1000000000);    // CPU core do not have hard integer divide command!
+    ns  *= 15;                 // 66 MHz == 15.1515151515... ns
+    nss  = ns;
+    nss /= 1000000000;         // "integer" part of seconds
+    __tp->tv_sec  = nss;
+    nss *= 1000000000;
+    __tp->tv_nsec = ns - nss;  // CPU core do not have hard integer divide command!
     #else
     // ToDo: optimize without div command
     #endif
@@ -79,10 +83,14 @@ int gettimeofday(struct timeval *tv, void *tz)
 {
     // Note:  CLOCK_MONOTONIC
     #if 1
-    uint64_t us = ClockCycles() * 15152;  // 66 MHz == 15.1515151515... ns
+    uint64_t  uss, us = ClockCycles();
 
-    tv->tv_sec  = us / 1000000;
-    tv->tv_usec = us - (tv->tv_sec * 1000000);    // CPU core do not have hard integer divide command!
+    us  /= 66;                 // 66 MHz == 15.1515151515... ns
+    uss  = us;
+    uss /= 1000000;            // "integer" part of seconds
+    tv->tv_sec  = uss;
+    uss *= 1000000;
+    tv->tv_usec = us - uss;    // CPU core do not have hard integer divide command!
     #else
     // ToDo: optimize without div command
     #endif
