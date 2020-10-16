@@ -740,7 +740,7 @@ int measure_data_processing(void *process_data, int process_size)
     int  i;
 
     printf("Calibrate data access time (%d bytes)...\n", process_size);
-    sleep(5);
+//  sleep(5);
 
     bread(process_data, process_size / 1024);
     clock_gettime(CLOCK_MONOTONIC, &tp_start);
@@ -759,14 +759,16 @@ int measure_data_processing(void *process_data, int process_size)
 
 void print_result(int64_t ns, int procs, int rounds, int64_t ns_process_data)
 {
-    int us = ns / 1000;
+    double us = ns;
+
+    us /= 1000.0;
     printf("\n");
-    printf("Test run time:       %d us\n", us);
+    printf("Test run time:       %f us\n", us);
     printf("Msg passes:          %d (%d procs * %d rounds)\n", procs*rounds, procs, rounds);
     printf("\n");
-    printf("Msg pass time:       %d us / pass (%d us / %d pass)\n", us/(procs*rounds), us, procs*rounds);
-    printf("- data access time:  %d us\n", (int)(ns_process_data/1000));
-    printf("= ctx switch time:   %d us\n", (int)((ns/(procs*rounds)) - ns_process_data)/1000);
+    printf("Msg pass time:       %f us / pass (%f us / %d pass)\n", us/(double)(procs*rounds), us, procs*rounds);
+    printf("- data access time:  %f us\n", ((double)ns_process_data) / 1000.0);
+    printf("= ctx switch time:   %f us\n", ((double)((ns/(procs*rounds)) - ns_process_data))/1000.0);
 }
 
 
@@ -802,6 +804,7 @@ int main(int argc, char*argv[])
 
         ns = run_iterator(Nsend);
         print_result(ns, procs, rounds, ns_process_data);
+
     }
     remove(FILENAME);
     kill(0, SIGKILL);   // Kill also all sub process
