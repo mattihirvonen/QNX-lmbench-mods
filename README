@@ -21,7 +21,7 @@ Where
   -N  is how many times message circulates in process ring
 
 Increase "-N" value until manual stopwatch measured test runtime
-from enter back to command command prompt is about 10 to 30 seconds.
+from enter back to command prompt is about 10 to 30 seconds.
 
 Verify results
 
