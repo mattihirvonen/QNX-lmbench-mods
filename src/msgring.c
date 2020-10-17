@@ -694,7 +694,8 @@ int measure_data_processing(void *process_data, int process_size)
     #define CALIBRATION_LOOPS  10000
 
     timespec_t  tp_start, tp_end;
-    int  i;
+    int64_t     ns;
+    int         i;
 
     printf("Calibrate data access time (%d bytes)...\n", process_size);
 //  sleep(5);
@@ -706,11 +707,12 @@ int measure_data_processing(void *process_data, int process_size)
     }
     clock_gettime(CLOCK_MONOTONIC, &tp_end);
 
-    int nsTdiff = diff_tp_ns(&tp_start, &tp_end) / CALIBRATION_LOOPS;
-    printf("Data access time (%d bytes) = %d ns\n", process_size, nsTdiff);
+    ns  = diff_tp_ns(&tp_start, &tp_end);
+    ns /= CALIBRATION_LOOPS;
 
-    int64_t ns  = diff_tp_ns(&tp_start, &tp_end);
-    return  ns /= CALIBRATION_LOOPS;
+    printf("Data (read) access time (%d bytes) = %d ns\n", process_size, ns);
+
+    return  ns;
 }
 
 
@@ -731,6 +733,10 @@ void print_result(int64_t ns, int procs, int rounds, int64_t ns_process_data)
 
 int main(int argc, char*argv[])
 {
+    timespec_t  test_begin, test_end;  // For wall clock verification from enter to prompt
+
+    clock_gettime( CLOCK_MONOTONIC, &test_begin );
+
     get_opts(argc, argv);
     init_state();
 
@@ -765,5 +771,14 @@ int main(int argc, char*argv[])
     }
     remove(FILENAME);
     kill(0, SIGKILL);   // Kill also all sub process
+
+    clock_gettime( CLOCK_MONOTONIC, &test_end );
+
+    uint64_t  ns   = diff_tp_ns(&test_begin, &test_end);
+    double    nsec = ns;
+
+    printf("\n");
+    printf("Test wall clock (real) time %.3f seconds\n", nsec / 1000000000.0 );
+
     return 0;
 }
