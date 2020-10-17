@@ -1,13 +1,19 @@
+
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>       // strcmp()
-#include <unistd.h>       // sleep()
+#include <string.h>         // strcmp()
+#include <unistd.h>         // sleep()
 #include <time.h>
 #include <sys/time.h>
 #include "TIMES.h"
+
+#ifndef  __linux
+#include <sys/neutrino.h>
+#include <sys/syspage.h>    // SYSPAGE_ENTRY()
+#endif
 
 //-----------------------------------------------------------------------------------------------
 // Dummy satify for  lib_timing.c::handle_scheduler()  request
@@ -19,6 +25,17 @@ int handle_scheduler(int x, int y, int z)
 
 //-----------------------------------------------------------------------------------------------
 
+void QNX_print_cps( void )
+{
+    #ifndef __linux
+    uint64_t cps = SYSPAGE_ENTRY(qtime)->cycles_per_sec;
+
+    printf("QNX ClockCycles(): clock pulses per second = %lld\n\n", cps);
+    #endif
+}
+
+//-----------------------------------------------------------------------------------------------
+
 int main( int argc, char *argv[] )
 {
     struct timespec  tp_start, tp_end, tp_diff;
@@ -26,6 +43,8 @@ int main( int argc, char *argv[] )
 
     clock_gettime( CLOCK_MONOTONIC, &tp_start );
     gettimeofday( &tv_start, NULL );
+
+    QNX_print_cps();
 
     int  i, decimals = 0, sleeptime = 10;
 
