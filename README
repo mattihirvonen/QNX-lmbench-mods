@@ -14,17 +14,19 @@ Time measurement verification
 -----------------------------
 Run "sleeptest" to verify time measurement.
 Default sleep test delay is 10 seconds.
+Optional "-d" command line argument print more result decimals.
 
-  sleeptest [seconds]
+  sleeptest [-d] [seconds]
 
 IMPORTANT !!!
 Verify test's run with "time" command and manual stopwatch.
 
-  time sleeptest [seconds]
+  time  sleeptest [-d] [seconds]
 
 All three measurement results should be approximately same:
  - manual stopwatch measurement
  - both "sleeptest"'s printed measurements
+   (Note: "Results:" printing is not in measured times)
  - "time" command's "real" wall clock time result
 
 
