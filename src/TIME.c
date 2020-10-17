@@ -26,13 +26,25 @@ typedef struct timespec timespec_t;
 // http://www.qnx.com/developers/docs/7.0.0/#com.qnx.doc.neutrino.lib_ref/topic/c/clockcycles.html
 // extern int clock_gettime(clockid_t __clock_id, struct timespec *__tp);
 
+#include <sys/syspage.h>
+/* find out how many cycles per second */
+static uint64_t cps;
+
+
 int clock_gettime( clockid_t  __clock_id, struct timespec *__tp )
 {
     // Note:  __clock_id == CLOCK_MONOTONIC
     #if 1
     uint64_t  nss, ns = ClockCycles();
 
+    #if 1
+    if (!cps) {
+        cps = 1000000000UL / SYSPAGE_ENTRY(qtime)->cycles_per_sec;
+    }
+    ns  *= cps;
+    #else
     ns  *= 15;                 // 66 MHz == 15.1515151515... ns
+    #endif
     nss  = ns;
     nss /= 1000000000;         // "integer" part of seconds
     __tp->tv_sec  = nss;
@@ -51,7 +63,14 @@ int gettimeofday(struct timeval *tv, void *tz)
     #if 1
     uint64_t  uss, us = ClockCycles();
 
+    #if 1
+    if (!cps) {
+        cps = SYSPAGE_ENTRY(qtime)->cycles_per_sec / 1000000UL;
+    }
+    us  /= cps;
+    #else
     us  /= 66;                 // 66 MHz == 15.1515151515... ns
+    #endif
     uss  = us;
     uss /= 1000000;            // "integer" part of seconds
     tv->tv_sec  = uss;
@@ -62,5 +81,5 @@ int gettimeofday(struct timeval *tv, void *tz)
     #endif
     return 0;
 }
-#endif
 
+#endif // __linux
