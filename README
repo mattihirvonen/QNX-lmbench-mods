@@ -1,7 +1,7 @@
 
 Building
 --------
-"build.sh" shell script to build tests for
+Use "build.sh" shell script to build tests for
 
 - Windows/cygwin QNX cross compiling environment:
   Compiling output directory is "bin/qnx/"
@@ -16,29 +16,29 @@ Run "sleeptest" to verify time measurement.
 Default sleep test delay is 10 seconds.
 Optional "-d" command line argument print more result decimals.
 
-  sleeptest [-d] [seconds]
+    sleeptest [-d] [seconds]
 
 IMPORTANT !!!
-Verify test's run with "time" command and manual stopwatch.
+Verify test run with "time" command and manual stopwatch.
 
-  time  sleeptest [-d] [seconds]
+    time  sleeptest [-d] [seconds]
 
 All three measurement results should be approximately same:
- - manual stopwatch measurement
- - both "sleeptest"'s printed measurements
-   (Note: "Results:" printing is not in measured times)
- - "time" command's "real" wall clock time result
+- manual stopwatch measurement
+- both "sleeptest"'s printed measurements
+  (Note: "Results:" printing is not in measured times)
+- "time" command's "real" wall clock time result
 
 
 Running msgring test (QNX)
 --------------------------
 Start running "msgring" with command line parameters:
 
-  msgring.bin -P 10 -N 10000
+    msgring.bin -P 10 -N 10000
 
 Where
-  -P  is process count of ring length to throw hot potato message
-  -N  is how many times message circulates in process ring
+    -P  is process count of ring length to throw hot potato message
+    -N  is how many times message circulates in process ring
 
 Increase "-N" value until manual stopwatch measured test runtime
 from enter back to command prompt is about 10 to 30 seconds.
@@ -61,7 +61,7 @@ Test run two times message passing test and print result(s) per one test at time
 
 
 "-s xx" command line option
-------------------------
+---------------------------
 Command line option "-s xx" allocate "xx" kilo bytes memory for each running process.
 Each process make "cache scrambling" read access to allocated memory during message pass
 (MsgReceive,MsgReply,MemoryAccess,MsgSend).
@@ -83,6 +83,7 @@ Msgring test have two optional kernel scheduling method selection command line o
  - lat_syscall null
 
  ref:
+ http://www.bitmover.com/lmbench/
  http://lmbench.sourceforge.net/man/index.html
  http://lmbench.sourceforge.net/man/bw_mem.8.html
  http://lmbench.sourceforge.net/man/lat_ops.8.html

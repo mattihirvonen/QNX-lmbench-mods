@@ -20,13 +20,21 @@ fi
 
 #  getopt.c  lib_sched.c  lib_stats.c   lib_debug.c  -lm
 
-do_compile() {
-
+do_build() {
     cd   src
+    echo Compile  $1
+    $CC  -DHAVE_socklen_t  $OPT  -o $OUT/$1.bin  $1.c  getopt.c  PIPE.c  TIMES.c  lib_timing.c  lib_sched.c  lib_mem.c  lib_stats.c \
+    lib_tcp.c  lib_udp.c  lib_unix.c  lib_debug.c  -lm
+#   echo .
+    cd   ..
+}
+
+
+do_compile() {
+    cd   src
+    echo Compile  $1
     $CC  -DHAVE_socklen_t  $OPT  -o $OUT/$1.bin  $1.c  getopt.c  PIPE.c  TIMES.c  lib_timing.c  lib_sched.c  lib_mem.c  lib_stats.c  -lm
-#   $CC  -DHAVE_socklen_t  $OPT  -o $OUT/$1.bin  $1.c  getopt.c  PIPE.c  lib_timing.c  lib_sched.c  lib_mem.c
-#   $CC  -DHAVE_socklen_t  $OPT  -o $OUT/$1.bin  $1.c  getopt.c
-#   mv   $1  ..
+#   echo .
     cd   ..
 }
 
@@ -51,51 +59,121 @@ do_build_linux() {
     do_msgring  msgring
 #   do_compile  hello
 
-    do_compile  lat_pipe
-    do_compile  lat_ctx
-    do_compile  lat_ctx_qnx
+    do_compile  bw_mem
+    do_compile  lat_ops
+    do_compile  lat_syscall
 
-#   do_compile  clock
+#   do_compile  bw_file_read
+#   do_compile  bw_mmem_rd
+    do_compile  bw_pipe
+#   do_compile  bw_tcp
+#   do_compile  bw_unix
 
     do_compile  cache
-    do_minimal  bw_mem
-    do_minimal  bw_file_rd
-    do_compile  lat_mem_rd
+    do_compile  disk
+    do_compile  enough
+#   do_compile  flushdisk
+
+    do_compile  lat_cmd
+#   do_compile  lat_connect
+    do_compile  lat_ctx
+    do_compile  lat_ctx_qnx
     do_compile  lat_dram_page
-
-    do_compile  bw_mmap_rd
+    do_compile  lat_fcntl
+    do_compile  lat_fifo
+#   do_compile  lat_fs         ## warning(s)
+#   do_compile  lat_http
+    do_compile  lat_mem_rd
+    do_compile  lat_mmap
     do_compile  lat_pagefault
+    do_compile  lat_pipe
+    do_compile  lat_pmake
+    do_compile  lat_proc
+    do_compile  lat_rand
+#   do_compile  lat_rpc
+#   do_compile  lat_select
+#   do_compile  lat_sem
+    do_compile  lat_sig
+#   do_compile  lat_tcp
+#   do_compile  lat_udp
+#   do_compile  lat_unix
+#   do_compile  lat_unix_connect
+    do_compile  lat_usleep
 
-    do_compile  tlb
     do_compile  line
-    do_minimal  lat_ops
-    do_minimal  lat_syscall
+#   do_compile  lmbench
+#   do_compile  lmdd           ## warning(s)
+#   do_compile  lmhttp
+    do_compile  memsize
+    do_compile  mhz
+    do_compile  msleep
+    do_compile  stream
+    do_compile  tlb
 
-    do_compile  par_mem       # ei hyödyllinen
-    do_compile  par_ops       # ei hyödyllinen
+    do_compile  par_mem
+    do_compile  par_ops
 }
 
 
 do_build_qnx() {
+    #  Commented lines do not build properly QNX binary.
+    #  (Required sources not included into compile command?)
+    #  Some compiles produce warnings !!!
+
     do_msgring  sleeptest
-    do_msgring  msgring       # lib_sched.c:(.text+0x40): multiple definition of `handle_scheduler'
+    do_msgring  msgring
 #   do_single   hello
 
     do_compile  bw_mem
     do_compile  lat_ops
     do_compile  lat_syscall
 
-    do_compile  lat_pipe
+#   do_compile  bw_file_read
+#   do_compile  bw_mmem_rd
+    do_compile  bw_pipe
+#   do_compile  bw_tcp
+#   do_compile  bw_unix
+
+    do_compile  cache
+    do_compile  disk
+    do_compile  enough
+#   do_compile  flushdisk
+
+    do_compile  lat_cmd
+#   do_compile  lat_connect
     do_compile  lat_ctx
     do_compile  lat_ctx_qnx
-
-    do_compile  lat_mem_rd
-
-    do_compile  tlb
     do_compile  lat_dram_page
-    do_compile  cache
+    do_compile  lat_fcntl
+    do_compile  lat_fifo
+#   do_compile  lat_fs         ## warning(s)
+#   do_compile  lat_http
+    do_compile  lat_mem_rd
+    do_compile  lat_mmap
+    do_compile  lat_pagefault
+    do_compile  lat_pipe
+    do_compile  lat_pmake
+    do_compile  lat_proc
+    do_compile  lat_rand
+#   do_compile  lat_rpc
+#   do_compile  lat_select
+#   do_compile  lat_sem
+    do_compile  lat_sig
+#   do_build    lat_tcp
+#   do_build    lat_udp
+#   do_build    lat_unix
+#   do_build    lat_unix_connect
+    do_compile  lat_usleep
+
     do_compile  line
+#   do_compile  lmbench
+#   do_compile  lmdd           ## warning(s)
+#   do_compile  lmhttp
+    do_compile  memsize
     do_compile  mhz
+    do_compile  msleep
+    do_compile  stream
+    do_compile  tlb
 
     do_compile  par_mem
     do_compile  par_ops
