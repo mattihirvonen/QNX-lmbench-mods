@@ -11,6 +11,7 @@
 #include <sched.h>          // getprio(), setprio()
 #include <sys/resource.h>   // getprio(), setprio()
 #include "msgring.h"
+#include "TIMES.h"
 
 long bread(void* buf, long nbytes);
 
@@ -53,65 +54,6 @@ int      priority = 1;
 int      verbose  = 0;
 int      process_size = 0;   // N * 1024 bytes
 void    *process_data = 0;
-
-//-----------------------------------------------------------------------------------------------
-
-void diff_tp( struct timespec *diff, const struct timespec *tp_start, const struct timespec *tp_end )
-{
-    if (tp_start->tv_nsec > tp_end->tv_nsec)
-    {
-        diff->tv_sec  = tp_end->tv_sec - tp_start->tv_sec - 1;
-        diff->tv_nsec = 1000000000 - (tp_start->tv_nsec - tp_end->tv_nsec);
-    }
-    else
-    {
-        diff->tv_sec  = tp_end->tv_sec  - tp_start->tv_sec;
-        diff->tv_nsec = tp_end->tv_nsec - tp_start->tv_nsec;
-    }
-}
-
-int64_t diff_tp_ns( const struct timespec *tp_start, const struct timespec *tp_end )
-{
-    struct timespec  diff;
-    int64_t          ns;
-
-    diff_tp( &diff, tp_start, tp_end );
-
-    ns  = diff.tv_sec;
-    ns *= 1000000000;
-    ns += diff.tv_nsec;
-
-    return ns;
-}
-
-int64_t diff_tp_us( const struct timespec *tp_start, const struct timespec *tp_end )
-{
-    struct timespec  diff;
-    int64_t          us;
-
-    diff_tp( &diff, tp_start, tp_end );
-
-    us  = diff.tv_sec;
-    us *= 1000000;
-    us += diff.tv_nsec / 1000;
-
-    return us;
-}
-
-int64_t diff_tp_ms( const struct timespec *tp_start, const struct timespec *tp_end )
-{
-    struct timespec  diff;
-    int64_t          ms;
-
-    diff_tp( &diff, tp_start, tp_end );
-
-    ms  = diff.tv_sec;
-    ms *= 1000;
-    ms += diff.tv_nsec / 1000000;
-
-    return ms;
-}
-
 
 //-----------------------------------------------------------------------------------------------
 // Dummy satify for  lib_timing.c::handle_scheduler()  request
@@ -710,7 +652,7 @@ int measure_data_processing(void *process_data, int process_size)
     ns  = diff_tp_ns(&tp_start, &tp_end);
     ns /= CALIBRATION_LOOPS;
 
-    printf("Data (read) access time (%d bytes) = %d ns\n", process_size, ns);
+    printf("Data (read) access time (%d bytes) = %ld ns\n", process_size, ns);
 
     return  ns;
 }

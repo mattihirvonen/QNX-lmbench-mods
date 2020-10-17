@@ -31,13 +31,15 @@
 		<Compiler>
 			<Add option="-Wall" />
 		</Compiler>
+		<Unit filename="README" />
 		<Unit filename="build.sh" />
 		<Unit filename="src/PIPE.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="src/TIME.c">
+		<Unit filename="src/TIMES.c">
 			<Option compilerVar="CC" />
 		</Unit>
+		<Unit filename="src/TIMES.h" />
 		<Unit filename="src/bench.h" />
 		<Unit filename="src/bw_mem.c">
 			<Option compilerVar="CC" />
@@ -82,6 +84,9 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="src/msgring.h" />
+		<Unit filename="src/sleeptest.c">
+			<Option compilerVar="CC" />
+		</Unit>
 		<Extensions>
 			<envvars />
 			<code_completion />

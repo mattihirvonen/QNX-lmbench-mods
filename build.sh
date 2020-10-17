@@ -23,7 +23,7 @@ fi
 do_compile() {
 
     cd   src
-    $CC  -DHAVE_socklen_t  $OPT  -o $OUT/$1.bin  $1.c  getopt.c  PIPE.c  TIME.c  lib_timing.c  lib_sched.c  lib_mem.c  lib_stats.c  -lm
+    $CC  -DHAVE_socklen_t  $OPT  -o $OUT/$1.bin  $1.c  getopt.c  PIPE.c  TIMES.c  lib_timing.c  lib_sched.c  lib_mem.c  lib_stats.c  -lm
 #   $CC  -DHAVE_socklen_t  $OPT  -o $OUT/$1.bin  $1.c  getopt.c  PIPE.c  lib_timing.c  lib_sched.c  lib_mem.c
 #   $CC  -DHAVE_socklen_t  $OPT  -o $OUT/$1.bin  $1.c  getopt.c
 #   mv   $1  ..
@@ -34,19 +34,20 @@ do_compile() {
 # Use minimal "library" set
 do_minimal() {
     cd   src
-    $CC  -DHAVE_socklen_t  $OPT  -o $OUT/$1.bin  $1.c  getopt.c  lib_timing.c  lib_sched.c  PIPE.c  TIME.c
+    $CC  -DHAVE_socklen_t  $OPT  -o $OUT/$1.bin  $1.c  getopt.c  lib_timing.c  lib_sched.c  PIPE.c  TIMES.c
     cd   ..
 }
 
 
 do_msgring() {
     cd   src
-    $CC  -DHAVE_socklen_t -DQNXMSG  $OPT  -o  $OUT/$1.bin  $1.c  lib_timing.c  PIPE.c  TIME.c
+    $CC  -DHAVE_socklen_t -DQNXMSG  $OPT  -o  $OUT/$1.bin  $1.c  lib_timing.c  PIPE.c  TIMES.c
     cd   ..
 }
 
 
 do_build_linux() {
+    do_msgring  sleeptest
     do_msgring  msgring
 #   do_compile  hello
 
@@ -76,6 +77,7 @@ do_build_linux() {
 
 
 do_build_qnx() {
+    do_msgring  sleeptest
     do_msgring  msgring       # lib_sched.c:(.text+0x40): multiple definition of `handle_scheduler'
 #   do_single   hello
 

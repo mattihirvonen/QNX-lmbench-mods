@@ -1,17 +1,35 @@
 
 Building
 --------
-There is "build.sh" shell script to build tests
+"build.sh" shell script to build tests for
 
 - Windows/cygwin QNX cross compiling environment:
   Compiling output directory is "bin/qnx/"
 
-- Native linux runtime:
+- Native Linux runtime:
   Compiling output directory is "bin/linux/"
 
 
-Running test (QNX)
-------------------
+Time measurement verification
+-----------------------------
+Run "sleeptest" to verify time measurement.
+Default sleep test delay is 10 seconds.
+
+  sleeptest [seconds]
+
+IMPORTANT !!!
+Verify test's run with "time" command and manual stopwatch.
+
+  time sleeptest [seconds]
+
+All three measurement results should be approximately same:
+ - manual stopwatch measurement
+ - both "sleeptest"'s printed measurements
+ - "time" command's "real" wall clock time result
+
+
+Running msgring test (QNX)
+--------------------------
 Start running "msgring" with command line parameters:
 
   msgring.bin -P 10 -N 10000
@@ -53,6 +71,20 @@ Msgring test have two optional kernel scheduling method selection command line o
 
  -F  select SCHED_FIFO scheduling strategy
  -R  select SCHED_RR   scheduling strategy
+
+
+ lmbench
+ -------
+ Most interesting "lmbench" test(s) are:
+ - bw_mem
+ - lat_ops
+ - lat_syscall null
+
+ ref:
+ http://lmbench.sourceforge.net/man/index.html
+ http://lmbench.sourceforge.net/man/bw_mem.8.html
+ http://lmbench.sourceforge.net/man/lat_ops.8.html
+ http://lmbench.sourceforge.net/man/lat_syscall.8.html
 
 
 ==============================================================================
