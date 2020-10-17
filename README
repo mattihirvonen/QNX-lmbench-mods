@@ -12,7 +12,7 @@ There is "build.sh" shell script to build tests
 
 Running test (QNX)
 ------------------
-Start runing "msgring" with command line parameters:
+Start running "msgring" with command line parameters:
 
   msgring.bin -P 10 -N 10000
 
@@ -36,6 +36,24 @@ Verify results
 Note:
 "time" command measure only one (starting) process CPU time usage,
 which is "1 / (-P 10)" part of total CPU usage (in this case 1/10 == 10%)
+
+Test run two times message passing test and print result(s) per one test at time.
+
+
+"-s xx" command line option
+------------------------
+Command line option "-s xx" allocate "xx" kilo bytes memory for each running process.
+Each process make "cache scrambling" read access to allocated memory during message pass
+(MsgReceive,MsgReply,MemoryAccess,MsgSend).
+
+
+"-F" and "-R" scheduling options
+--------------------------------
+Msgring test have two optional kernel scheduling method selection command line options
+
+ -F  select SCHED_FIFO scheduling strategy
+ -R  select SCHED_RR   scheduling strategy
+
 
 ==============================================================================
 Orginal "lmbench" README file:
