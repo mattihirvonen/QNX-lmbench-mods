@@ -1,3 +1,45 @@
+
+Building
+--------
+There is "build.sh" shell script to build tests
+
+- Windows/cygwin QNX cross compiling environment:
+  Compiling output directory is "bin/qnx/"
+
+- Native linux runtime:
+  Compiling output directory is "bin/linux/"
+
+
+Running test (QNX)
+------------------
+Start runing "msgring" with command line parameters:
+
+  msgring.bin -P 10 -N 10000
+
+Where
+  -P  is process count of ring length to throw hot potato message
+  -N  is how many times message circulates in process ring
+
+Increase "-N" value until manual stopwatch measured test runtime
+from enter back to command command prompt is about 10 to 30 seconds.
+
+Verify results
+
+   - with command  "time msgring -P 10 -N xxxx"
+     "Test wall clock (real) time ss.ddd seconds"
+     should be same as stopwatch time (note measurement accuracy)
+
+   - "time" command's
+     - "real" time result should equal with previous results
+     - "user"+"system" times should be approximately 10% of "real" time
+
+Note:
+"time" command measure only one (starting) process CPU time usage,
+which is "1 / (-P 10)" part of total CPU usage (in this case 1/10 == 10%)
+
+==============================================================================
+Orginal "lmbench" README file:
+
 README for lmbench 2alpha8 net release.
 
 To run the benchmark, you should be able to say:
