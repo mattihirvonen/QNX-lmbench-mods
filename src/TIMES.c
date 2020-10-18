@@ -1,6 +1,6 @@
 //
-// Better resolution standard library time function replacement(s)
-// to measure short time periods in QNX more accurate
+// Better resolution function replacement(s) for standard library
+// to measure short time periods more accurate in QNX
 // (like unmodified lmbench tests require).
 //
 // Replace QNX functions (with only CLOCK_MONOTONIC support):
