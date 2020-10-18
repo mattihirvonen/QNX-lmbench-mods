@@ -1,10 +1,21 @@
-
+//
+// Better resolution standard library time function replacement(s)
+// to measure short time periods in QNX more accurate
+// (like unmodified lmbench tests require).
+//
+// Replace QNX functions (with only CLOCK_MONOTONIC support):
+// - clock_getres()
+// - clock_gettime()
+// - gettimeofday()
+//
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
+#include <time.h>           // DO not include "TIMES.h"
+
+//#include "TIMES.h"
 
 #ifndef  __linux
 #include <sys/neutrino.h>   // Msg....()
@@ -12,14 +23,16 @@
 #endif
 
 
-#if defined(__MINGW32__)
-typedef struct timespec {
-        time_t   tv_sec;        /* seconds */
-        long     tv_nsec;       /* nanoseconds */
-} timespec_t;
-#else
-typedef struct timespec timespec_t;
-#endif // __MINGW32__
+//#if defined(__MINGW32__)
+//typedef struct timespec {
+//typedef struct {
+//        time_t   tv_sec;        /* seconds */
+//        long     tv_nsec;       /* nanoseconds */
+//} timespec_t;
+//#else
+  typedef struct timespec timespec_t;
+//#endif // __MINGW32__
+
 
 #ifdef    QNX_SLEEPTEST
 #define   clock_getres    CLOCK_GETRES
@@ -29,7 +42,7 @@ typedef struct timespec timespec_t;
 
 //----------------------------------------------------------------------------------------------------------
 
-void diff_tv( struct timeval *diff, const struct timeval *tv_start, const struct timeval *tv_end )
+void diff_tv( struct timeval *diff, struct timeval *tv_start, struct timeval *tv_end )
 {
     if (tv_start->tv_usec > tv_end->tv_usec)
     {
@@ -44,7 +57,7 @@ void diff_tv( struct timeval *diff, const struct timeval *tv_start, const struct
 }
 
 
-void diff_tp( struct timespec *diff, const struct timespec *tp_start, const struct timespec *tp_end )
+void diff_tp( struct timespec *diff, struct timespec *tp_start, struct timespec *tp_end )
 {
     if (tp_start->tv_nsec > tp_end->tv_nsec)
     {
@@ -58,7 +71,7 @@ void diff_tp( struct timespec *diff, const struct timespec *tp_start, const stru
     }
 }
 
-int64_t diff_tp_ns( const struct timespec *tp_start, const struct timespec *tp_end )
+int64_t diff_tp_ns( struct timespec *tp_start, struct timespec *tp_end )
 {
     struct timespec  diff;
     int64_t          ns;
@@ -72,7 +85,7 @@ int64_t diff_tp_ns( const struct timespec *tp_start, const struct timespec *tp_e
     return ns;
 }
 
-int64_t diff_tp_us( const struct timespec *tp_start, const struct timespec *tp_end )
+int64_t diff_tp_us( struct timespec *tp_start, struct timespec *tp_end )
 {
     struct timespec  diff;
     int64_t          us;
@@ -86,7 +99,7 @@ int64_t diff_tp_us( const struct timespec *tp_start, const struct timespec *tp_e
     return us;
 }
 
-int64_t diff_tp_ms( const struct timespec *tp_start, const struct timespec *tp_end )
+int64_t diff_tp_ms( struct timespec *tp_start, struct timespec *tp_end )
 {
     struct timespec  diff;
     int64_t          ms;
