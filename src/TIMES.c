@@ -13,7 +13,7 @@
 
 #include  <stdio.h>
 #include  <stdlib.h>
-#include  <time.h>           // DO not include "TIMES.h"
+#include  <time.h>
 
 #ifndef   __linux
 #include  <sys/neutrino.h>   // Msg....()
