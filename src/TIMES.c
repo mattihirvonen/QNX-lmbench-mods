@@ -8,31 +8,19 @@
 // - clock_gettime()
 // - gettimeofday()
 //
-#define __STDC_FORMAT_MACROS
-#include <inttypes.h>
+#define   __STDC_FORMAT_MACROS
+#include  <inttypes.h>
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>           // DO not include "TIMES.h"
+#include  <stdio.h>
+#include  <stdlib.h>
+#include  <time.h>           // DO not include "TIMES.h"
 
-//#include "TIMES.h"
-
-#ifndef  __linux
-#include <sys/neutrino.h>   // Msg....()
-#include <sys/time.h>       // struct timespec
+#ifndef   __linux
+#include  <sys/neutrino.h>   // Msg....()
+#include  <sys/time.h>       // struct timespec
 #endif
 
-
-//#if defined(__MINGW32__)
-//typedef struct timespec {
-//typedef struct {
-//        time_t   tv_sec;        /* seconds */
-//        long     tv_nsec;       /* nanoseconds */
-//} timespec_t;
-//#else
-  typedef struct timespec timespec_t;
-//#endif // __MINGW32__
-
+#include  "TIMES.h"
 
 #ifdef    QNX_SLEEPTEST
 #define   clock_getres    CLOCK_GETRES
