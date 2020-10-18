@@ -21,6 +21,12 @@ typedef struct timespec {
 typedef struct timespec timespec_t;
 #endif // __MINGW32__
 
+#ifdef    QNX_SLEEPTEST
+#define   clock_getres    CLOCK_GETRES
+#define   clock_gettime   CLOCK_GETTIME
+#define   gettimeofday    GETTIMEOFDAY
+#endif // QNX_SLEEPTEST
+
 //----------------------------------------------------------------------------------------------------------
 
 void diff_tv( struct timeval *diff, const struct timeval *tv_start, const struct timeval *tv_end )
@@ -103,15 +109,23 @@ int64_t diff_tp_ms( const struct timespec *tp_start, const struct timespec *tp_e
 #include <sys/syspage.h>
 /* find out how many cycles per second  */
 /* SYSPAGE_ENTRY(qtime)->cycles_per_sec */
-static uint64_t  cps;
+static uint64_t  cps, ns_per_cp;
+
+
+int clock_getres( clockid_t   __clock_id, struct timespec *__tp )
+{
+    if (!ns_per_cp) {
+         ns_per_cp = 1000000000UL / SYSPAGE_ENTRY(qtime)->cycles_per_sec;
+    }
+    return ns_per_cp;
+}
+
 
 int clock_gettime( clockid_t  __clock_id, struct timespec *__tp )
 {
-    static uint64_t  ns_per_cp;
-
     // Note:  __clock_id == CLOCK_MONOTONIC
     #if 1
-    uint64_t  nss, ns = ClockCycles();
+    uint64_t  nss, ns;
 
     #if 1
     if (!ns_per_cp) {

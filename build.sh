@@ -23,7 +23,7 @@ fi
 do_build() {
     cd   src
     echo Compile  $1
-    $CC  -DHAVE_socklen_t  $OPT  -o $OUT/$1.bin  $1.c  getopt.c  PIPE.c  TIMES.c  lib_timing.c  lib_sched.c  lib_mem.c  lib_stats.c \
+    $CC  -DHAVE_socklen_t  $2  -o $OUT/$1.bin  $1.c  getopt.c  PIPE.c  TIMES.c  lib_timing.c  lib_sched.c  lib_mem.c  lib_stats.c \
     lib_tcp.c  lib_udp.c  lib_unix.c  lib_debug.c  -lm
 #   echo .
     cd   ..
@@ -33,7 +33,7 @@ do_build() {
 do_compile() {
     cd   src
     echo Compile  $1
-    $CC  -DHAVE_socklen_t  $OPT  -o $OUT/$1.bin  $1.c  getopt.c  PIPE.c  TIMES.c  lib_timing.c  lib_sched.c  lib_mem.c  lib_stats.c  -lm
+    $CC  -DHAVE_socklen_t  $2  -o $OUT/$1.bin  $1.c  getopt.c  PIPE.c  TIMES.c  lib_timing.c  lib_sched.c  lib_mem.c  lib_stats.c  -lm
 #   echo .
     cd   ..
 }
@@ -42,14 +42,16 @@ do_compile() {
 # Use minimal "library" set
 do_minimal() {
     cd   src
-    $CC  -DHAVE_socklen_t  $OPT  -o $OUT/$1.bin  $1.c  getopt.c  lib_timing.c  lib_sched.c  PIPE.c  TIMES.c
+    echo Compile  $1
+    $CC  -DHAVE_socklen_t  $2  -o $OUT/$1.bin  $1.c  getopt.c  lib_timing.c  lib_sched.c  PIPE.c  TIMES.c
     cd   ..
 }
 
 
 do_msgring() {
     cd   src
-    $CC  -DHAVE_socklen_t -DQNXMSG  $OPT  -o  $OUT/$1.bin  $1.c  lib_timing.c  PIPE.c  TIMES.c
+    echo Compile  $1
+    $CC  -DHAVE_socklen_t -DQNXMSG  $2  -o  $OUT/$1.bin  $1.c  lib_timing.c  PIPE.c  TIMES.c
     cd   ..
 }
 
@@ -120,7 +122,7 @@ do_build_qnx() {
     #  (Required sources not included into compile command?)
     #  Some compiles produce warnings !!!
 
-    do_msgring  sleeptest
+    do_msgring  sleeptest -DQNX_SLEEPTEST
     do_msgring  msgring
 #   do_single   hello
 
