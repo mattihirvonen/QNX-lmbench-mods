@@ -1,17 +1,22 @@
 //
 // Better result resolution function replacement(s) for standard library
 // to measure short time periods more accurate in QNX application
-// (like unmodified lmbench tests require).
+// (like old unmodified lmbench test source(s) require).
 //
 // Timing results have small timing errors due simple integer arithmetic.
 // Examples with some ARM iMX6 IPG clock speed(s) show 1% measurement error:
-// - 66.0 MHz -> 15.1515151515... ns per clock pulse rounded to 15.0 ns
-// - 49.5 MHz -> 20.2020202020... ns per clock pulse rounded to 20.0 ns
+// - 66.0 MHz -> 15.1515151515... ns per clock pulse rounded to 15.0 ns  (1%)
+// - 49.5 MHz -> 20.2020202020... ns per clock pulse rounded to 20.0 ns  (1%)
+// - 49.0 MHz -> 20.40816327..... ns per clock pulse rounded to 20.0 ns  (2%)
+//
+// Functions can made more absolute time accurate by scaling intermediate results
+// different way. Example multiply ClockPulses  by x10 and divide
+// "SYSPAGE_ENTRY(qtime)->cycles_per_sec" value by /10.
 //
 // These functions are suitable for in source code written performance,
-// response or latency time measurements, but not in normal application
+// response or latency time measurements, but not for normal application
 // calendar / wall clock time usage !!! Use QNX ClockPulses() function
-// if possible for this kind performance measurements.
+// if possible for performance measurements.
 //
 // Replace QNX functions (with only CLOCK_MONOTONIC support):
 // - clock_getres()
@@ -199,6 +204,10 @@ clock_t clock( void )
 {
     // Note:  CLOCK_MONOTONIC
     uint64_t  us;
+
+    /// ToDo: fix extra 1% error with rounding 49.5 MHz to 49 MHz
+    //  - 49.5 MHz -> 20.20202020... ns  (1% rounding error to 20 ns)
+    //  - 49.0 Mhz -> 20.40816327... ns  (2% rounding error to 20 ns)
 
     if (!MHz) {
          MHz = SYSPAGE_ENTRY(qtime)->cycles_per_sec / 1000000UL;
