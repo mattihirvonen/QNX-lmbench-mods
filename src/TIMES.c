@@ -1,12 +1,23 @@
 //
-// Better resolution function replacement(s) for standard library
-// to measure short time periods more accurate in QNX
+// Better result resolution function replacement(s) for standard library
+// to measure short time periods more accurate in QNX application
 // (like unmodified lmbench tests require).
+//
+// Timing results have small timing errors due simple integer arithmetic.
+// Examples with some ARM iMX6 IPG clock speed(s) show 1% measurement error:
+// - 66.0 MHz -> 15.1515151515... ns per clock pulse rounded to 15.0 ns
+// - 49.5 MHz -> 20.2020202020... ns per clock pulse rounded to 20.0 ns
+//
+// These functions are suitable for in source code written performance,
+// response or latency time measurements, but not in normal application
+// calendar / wall clock time usage !!! Use QNX ClockPulses() function
+// if possible for this kind performance measurements.
 //
 // Replace QNX functions (with only CLOCK_MONOTONIC support):
 // - clock_getres()
 // - clock_gettime()
 // - gettimeofday()
+// - clock()
 //
 #define   __STDC_FORMAT_MACROS
 #include  <inttypes.h>
@@ -111,6 +122,7 @@ int64_t diff_tp_ms( struct timespec *tp_start, struct timespec *tp_end )
 /* find out how many cycles per second  */
 /* SYSPAGE_ENTRY(qtime)->cycles_per_sec */
 static uint64_t  cps, ns_per_cp;
+static uint64_t  MHz;
 
 
 int clock_getres( clockid_t   __clock_id, struct timespec *__tp )
@@ -118,7 +130,11 @@ int clock_getres( clockid_t   __clock_id, struct timespec *__tp )
     if (!ns_per_cp) {
          ns_per_cp = 1000000000UL / SYSPAGE_ENTRY(qtime)->cycles_per_sec;
     }
-    return ns_per_cp;
+    if (__tp) {
+        __tp->tv_nsec = ns_per_cp;
+        __tp->tv_sec  = 0;
+    }
+    return 0;
 }
 
 
@@ -150,8 +166,6 @@ int clock_gettime( clockid_t  __clock_id, struct timespec *__tp )
 
 int gettimeofday(struct timeval *tv, void *tz)
 {
-    static uint64_t  MHz;
-
     // Note:  CLOCK_MONOTONIC
     #if 1
     uint64_t  us, uss;
@@ -173,6 +187,24 @@ int gettimeofday(struct timeval *tv, void *tz)
     // ToDo: optimize without div command
     #endif
     return 0;
+}
+
+
+/*
+To determine the time in seconds, the value returned by clock()
+should be divided by the value of the macro CLOCKS_PER_SEC.
+CLOCKS_PER_SEC is defined to be one million in <time.h>.
+*/
+clock_t clock( void )
+{
+    // Note:  CLOCK_MONOTONIC
+    uint64_t  us;
+
+    if (!MHz) {
+         MHz = SYSPAGE_ENTRY(qtime)->cycles_per_sec / 1000000UL;
+    }
+    us = ClockCycles() / MHz;
+    return us;
 }
 
 #endif // __linux
