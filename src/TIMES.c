@@ -132,17 +132,15 @@ int64_t diff_tp_ms( struct timespec *tp_start, struct timespec *tp_end )
 #include <sys/syspage.h>
 /* find out how many cycles per second  */
 /* SYSPAGE_ENTRY(qtime)->cycles_per_sec */
-static uint64_t  cps, ns_per_cp;
 static uint64_t  kHz;
 
 
 int clock_getres( clockid_t   __clock_id, struct timespec *__tp )
 {
-    if (!ns_per_cp) {
-         ns_per_cp = 1000000000UL / SYSPAGE_ENTRY(qtime)->cycles_per_sec;
-    }
+    uint64_t  ns_per_cycle = 1000000000UL / SYSPAGE_ENTRY(qtime)->cycles_per_sec;
+
     if (__tp) {
-        __tp->tv_nsec = ns_per_cp;
+        __tp->tv_nsec = ns_per_cycle;
         __tp->tv_sec  = 0;
     }
     return 0;
@@ -151,15 +149,20 @@ int clock_getres( clockid_t   __clock_id, struct timespec *__tp )
 
 int clock_gettime( clockid_t  __clock_id, struct timespec *__tp )
 {
-    // Note:  __clock_id == CLOCK_MONOTONIC
+    // Note(s):
+    //   __clock_id == CLOCK_MONOTONIC
+    //   Time result wrap around within 5 hours
+
     #if 1
     uint64_t  nss, ns;
 
     #if 1
-    if (!ns_per_cp) {
-         ns_per_cp = 1000000000UL / SYSPAGE_ENTRY(qtime)->cycles_per_sec;
+    if (!kHz) {
+         kHz = SYSPAGE_ENTRY(qtime)->cycles_per_sec / 1000ULL;
     }
-    ns   = ClockCycles() * ns_per_cp;
+    ns   = ClockCycles();
+    ns  *= 1000000;
+    ns  /= kHz;
     #else
     ns   = ClockCycles() * 15; // 66 MHz == 15.1515151515... ns
     #endif
@@ -212,10 +215,6 @@ clock_t clock( void )
 {
     // Note:  CLOCK_MONOTONIC
     uint64_t  us;
-
-    /// ToDo: fix extra 1% error with rounding 49.5 MHz to 49 MHz
-    //  - 49.5 MHz -> 20.20202020... ns  (1% rounding error to 20 ns)
-    //  - 49.0 Mhz -> 20.40816327... ns  (2% rounding error to 20 ns)
 
     if (!kHz) {
          kHz = SYSPAGE_ENTRY(qtime)->cycles_per_sec / 1000ULL;
