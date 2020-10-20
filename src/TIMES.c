@@ -3,6 +3,12 @@
 // to measure short time periods more accurate in QNX application
 // (like old unmodified lmbench test source(s) require).
 //
+// iMX6 IPG clock based GPT and EPIT timers are 32 bit length up-counter(s)
+// IPG clock based counter wrap around approximately in 86 seconds (at 50 MHz).
+// ClockCycles() kernel call returns the current value of a free-running 64-bit
+// cycle counter. This is implemented on each processor as a high-performance
+// mechanism for timing short intervals.
+//
 // Timing results have small timing errors due simple integer arithmetic.
 // Examples with some ARM iMX6 IPG clock speed(s) show 1% measurement error:
 // - 66.0 MHz -> 15.1515151515... ns per clock pulse rounded to 15.0 ns  (1%)
@@ -127,7 +133,7 @@ int64_t diff_tp_ms( struct timespec *tp_start, struct timespec *tp_end )
 /* find out how many cycles per second  */
 /* SYSPAGE_ENTRY(qtime)->cycles_per_sec */
 static uint64_t  cps, ns_per_cp;
-static uint64_t  MHz;
+static uint64_t  kHz;
 
 
 int clock_getres( clockid_t   __clock_id, struct timespec *__tp )
@@ -176,10 +182,12 @@ int gettimeofday(struct timeval *tv, void *tz)
     uint64_t  us, uss;
 
     #if 1
-    if (!MHz) {
-         MHz = SYSPAGE_ENTRY(qtime)->cycles_per_sec / 1000000UL;
+    if (!kHz) {
+         kHz = SYSPAGE_ENTRY(qtime)->cycles_per_sec / 1000ULL;
     }
-    us   = ClockCycles() / MHz;
+    us   = ClockCycles();
+    us  *= 1000;
+    us  /= kHz;
     #else
     us   = ClockCycles() / 66; // 66 MHz == 15.1515151515... ns
     #endif
@@ -209,10 +217,12 @@ clock_t clock( void )
     //  - 49.5 MHz -> 20.20202020... ns  (1% rounding error to 20 ns)
     //  - 49.0 Mhz -> 20.40816327... ns  (2% rounding error to 20 ns)
 
-    if (!MHz) {
-         MHz = SYSPAGE_ENTRY(qtime)->cycles_per_sec / 1000000UL;
+    if (!kHz) {
+         kHz = SYSPAGE_ENTRY(qtime)->cycles_per_sec / 1000ULL;
     }
-    us = ClockCycles() / MHz;
+    us   = ClockCycles();
+    us  *= 1000;
+    us  /= kHz;
     return us;
 }
 
