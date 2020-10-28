@@ -37,10 +37,10 @@
 #include  <stdlib.h>
 #include  <time.h>
 
-#ifndef   __linux
+#ifdef    __QNX__
 #include  <sys/neutrino.h>   // Msg....()
 #include  <sys/time.h>       // struct timespec
-#endif
+#endif // __QNX__
 
 #include  "TIMES.h"
 
@@ -48,6 +48,7 @@
 #define   clock_getres    CLOCK_GETRES
 #define   clock_gettime   CLOCK_GETTIME
 #define   gettimeofday    GETTIMEOFDAY
+#define   clock           CLOCK
 #endif // QNX_SLEEPTEST
 
 //----------------------------------------------------------------------------------------------------------
@@ -125,7 +126,7 @@ int64_t diff_tp_ms( struct timespec *tp_start, struct timespec *tp_end )
 
 //----------------------------------------------------------------------------------------------------------
 
-#ifndef  __linux
+#ifdef  __QNX__
 // http://www.qnx.com/developers/docs/7.0.0/#com.qnx.doc.neutrino.lib_ref/topic/c/clockcycles.html
 // extern int clock_gettime(clockid_t __clock_id, struct timespec *__tp);
 
@@ -225,4 +226,4 @@ clock_t clock( void )
     return us;
 }
 
-#endif // __linux
+#endif // __QNX__
