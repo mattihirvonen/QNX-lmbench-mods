@@ -14,7 +14,7 @@ char	*id = "$Id$\n";
 #include "bench.h"
 
 
-#ifndef __linux
+#ifdef   __QNX__
 #include <sys/neutrino.h>   // Msg....()
 
 #define QMSG_BUFFER_SIZE  256
@@ -26,7 +26,7 @@ char	*id = "$Id$\n";
 int     PIPE(int pipefd[2], void *cookie, char *txt);
 ssize_t READ(int fd, void *buf, size_t count);
 ssize_t WRITE(int fd, const void *buf, size_t count);
-#endif  //  __linux
+#endif  //  __QNX__
 
 
 #define	MAXPROC	2048

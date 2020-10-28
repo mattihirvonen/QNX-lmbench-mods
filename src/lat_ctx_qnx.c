@@ -20,13 +20,13 @@ char	*id = "$Id$\n";
 #define	max(a, b)	((a) > (b) ? (a) : (b))
 #endif
 
-#ifndef __linux
+#ifdef  __QNX__
 #define read  READ
 #define write WRITE
 
 ssize_t READ(int fd, void *buf, size_t count);
 ssize_t WRITE(int fd, const void *buf, size_t count);
-#endif  //  __linux
+#endif  //  __QNX__
 
 void	doit(int rd, int wr, int process_size);
 int	create_pipes(int **p, int procs, void *cookie);

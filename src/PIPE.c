@@ -6,7 +6,7 @@
 #include <sys/types.h>      // getpid()
 #include <unistd.h>         // getpid()
 
-#ifndef  __linux
+#ifdef   __QNX__
 #include <sys/neutrino.h>   // Msg....()
 #endif
 
@@ -39,20 +39,7 @@ int  PIPE(int pipefd[2], void *cookie, char *txt)
 
 	state_t *state = (state_t *)cookie;
 
-	#ifdef  __linux
-
-	int status =  pipe(pipefd);
-	if (verbose_level) {
-	    if (cookie)
-            printf("pipe %13s: getpid()=%d, fdin=%2d, fdout=%2d, state->chid_pid=%d\n",
-	                txt ? txt:"", getpid(), pipefd[0], pipefd[1], state->chid_pid);
-	    else
-	        printf("pipe %13s: getpid()=%d, fdin=%2d, fdout=%2d\n",
-	                txt? txt:"", getpid(), pipefd[0], pipefd[1]);
-	}
-	return status;
-
-	#else // __linux
+	#ifdef  __QNX__
 
 	// fd(READ)  connect ID
 	state->chid_pid  = getpid();
@@ -73,13 +60,27 @@ int  PIPE(int pipefd[2], void *cookie, char *txt)
 	#endif
 
 	return 0;
-	#endif //  __linux
+
+	#else // __QNX__
+
+	int status =  pipe(pipefd);
+	if (verbose_level) {
+	    if (cookie)
+            printf("pipe %13s: getpid()=%d, fdin=%2d, fdout=%2d, state->chid_pid=%d\n",
+	                txt ? txt:"", getpid(), pipefd[0], pipefd[1], state->chid_pid);
+	    else
+	        printf("pipe %13s: getpid()=%d, fdin=%2d, fdout=%2d\n",
+	                txt? txt:"", getpid(), pipefd[0], pipefd[1]);
+	}
+	return status;
+
+	#endif //  __QNX__
 }
 
 //--------------------------------------------------------------------------------------------------------
 // QNX replacements for read() and write() PIPE()'s file descriptors
 
-#ifndef  __linux
+#ifdef  __QNX__
 
 ssize_t READ(int fd, void *buf, size_t count)
 {
@@ -106,5 +107,5 @@ ssize_t WRITE(int fd, const void *buf, size_t count)
 	return (err == -1) ? err : count;
 }
 
-#endif // __linux
+#endif // __QNX__
 

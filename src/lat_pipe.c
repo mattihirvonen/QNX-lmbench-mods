@@ -12,7 +12,7 @@
 char	*id = "$Id$\n";
 
 
-#ifndef  __linux
+#ifdef   __QNX__
 #include <sys/neutrino.h>   // Msg....()
 
 #define  QMSG_BUFFER_SIZE  256
@@ -22,7 +22,7 @@ ssize_t WRITE(int fd, const void *buf, size_t count);
 
 #define  read  READ
 #define  write WRITE
-#endif   //  __linux
+#endif   //  __QNX__
 
 
 #include "bench.h"
@@ -106,14 +106,14 @@ void initialize(iter_t iterations, void* cookie)
 	switch (state->pid = fork()) {
 	    case 0:
 	        printf("initialize(child) : getpid()=%d\n", getpid());
-	        #ifndef __linux
+	        #ifdef __QNX__
             int coid1 = ConnectAttach(0, state->p1[0], state->chid, _NTO_SIDE_CHANNEL, 0);
             int coid2 = ConnectAttach(0, state->p2[0], state->chid, _NTO_SIDE_CHANNEL, 0);
             printf("conn: getpid()=%d, state->chid_pid=%d, coid1=%d\n", getpid(), state->chid_pid, coid1);
             printf("conn: getpid()=%d, state->chid_pid=%d, coid2=%d\n", getpid(), state->chid_pid, coid2);
             state->p1[0] = coid1;
             state->p2[1] = coid2;
-            #endif
+            #endif // __QNX__
 			handle_scheduler(benchmp_childid(), 1, 1);
 			signal(SIGTERM, exit);
 		//	close(state->p1[1]);

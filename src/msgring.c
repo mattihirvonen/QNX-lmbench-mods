@@ -175,7 +175,7 @@ void iterator1(int rounds, int Nsend)
 // Pit‰‰ ratkaista MsgReply() logiikka
 // - tarvitaan piippupari / message putki
 
-#ifdef  __linux
+#ifndef  __QNX__
 
 #define  _NTO_SIDE_CHANNEL  1
 #define  EOK                0
@@ -279,7 +279,7 @@ int rcvid = MsgReceive(chid, msg_receive, sizeof(msg_receive),  NULL);
 int  err  = MsgReply(rcvid, status, NULL, 0);
 */
 
-#endif // __linux
+#endif // __QNX__
 
 //-----------------------------------------------------------------------------------------------
 
