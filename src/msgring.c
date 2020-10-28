@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#ifndef  __linux
+#ifdef   __QNX__
 #include <sys/neutrino.h>   // Msg....()
 #endif
 #include <sched.h>          // getprio(), setprio()
@@ -70,7 +70,7 @@ ssize_t READ(int fd, void *buf, size_t count);
 ssize_t WRITE(int fd, const void *buf, size_t count);
 
 #if  0
-#ifndef __linux
+#ifdef  __QNX__
 ssize_t READ(int fd, void *buf, size_t count)
 {
 	// info: NULL, or a pointer to a _msg_info structure where the function
@@ -102,7 +102,7 @@ ssize_t WRITE(int fd, const void *buf, size_t count)
 //	memcpy(buf, msg_reply, QMSG_BUFFER_SIZE);  /// TODO: Reply READ goes too long!
 	return count;
 }
-#endif // __linux
+#endif // __QNX__
 #endif // 0
 
 //-------------------------------------------------------------------------------------
@@ -119,7 +119,7 @@ void jumper1(int Nsend)
 
     while (state.run)
     {
-        #ifndef __linux
+        #ifdef __QNX__
         if (READ( state.chid, buffer, sizeof(buffer)) == -1) {
             sprintf(buffer, "jumper(pid=%d) READ state.chid=%X", getpid(), state.chid);
             perror(buffer);
@@ -137,7 +137,7 @@ void jumper1(int Nsend)
         #if DEBUG
         printf("jumper(%d) WRITE ok\n",getpid());
         #endif // DEBUG
-        #endif // __linux
+        #endif // __QNX__
     }
 }
 
@@ -151,7 +151,7 @@ void iterator1(int rounds, int Nsend)
 
     while (rounds-- > 0)
     {
-        #ifndef __linux
+        #ifdef __QNX__
         char buffer[QMSG_BUFFER_SIZE];
 
         if (WRITE(state.coid, buffer, Nsend) == -1) {
@@ -165,7 +165,7 @@ void iterator1(int rounds, int Nsend)
         #if DEBUG
         printf("iterator rounds=%d\n", rounds);
         #endif // DEBUG
-        #endif // __linux
+        #endif // __QNX__
     }
 }
 
@@ -175,7 +175,7 @@ void iterator1(int rounds, int Nsend)
 // Pitää ratkaista MsgReply() logiikka
 // - tarvitaan piippupari / message putki
 
-#ifdef __linux
+#ifdef  __linux
 
 #define  _NTO_SIDE_CHANNEL  1
 #define  EOK                0
@@ -279,7 +279,7 @@ int rcvid = MsgReceive(chid, msg_receive, sizeof(msg_receive),  NULL);
 int  err  = MsgReply(rcvid, status, NULL, 0);
 */
 
-#endif
+#endif // __linux
 
 //-----------------------------------------------------------------------------------------------
 
@@ -352,7 +352,7 @@ void jumper(int Nsend)
 
     while (state.run)
     {
-        #ifndef __linux
+        #ifdef __QNX__
 	// info: NULL, or a pointer to a _msg_info structure where the function
 	//       can store additional information about the message.
 
@@ -377,7 +377,7 @@ void jumper(int Nsend)
         if  (err == -1) {
             return exit(1);
         }
-        #endif // __linux
+        #endif // __QNX__
     }
 }
 
@@ -394,7 +394,7 @@ void iterator(int rounds, int Nsend)
 
     while (rounds-- > 0)
     {
-        #ifndef __linux
+    #ifdef   __QNX__
 	struct   _msg_info   info;
 	uint8_t  msg_transmit[QMSG_BUFFER_SIZE];
 	uint8_t  msg_receive[QMSG_BUFFER_SIZE];
@@ -423,7 +423,7 @@ void iterator(int rounds, int Nsend)
         #if 0  // DEBUG
         printf("iterator rounds=%d\n", rounds);
         #endif // DEBUG
-        #endif // __linux
+        #endif // __QNX__
     }
 }
 
@@ -441,7 +441,7 @@ int64_t  run_iterator(int Nsend )
             exit(1);
         }
 
-        #ifndef __linux
+        #ifdef __QNX__
         int coid = ConnectAttach(0, ppid, chid, _NTO_SIDE_CHANNEL, 0);
         if (coid == -1) {
             printf("iterator:    coid ERROR\n");
@@ -449,7 +449,7 @@ int64_t  run_iterator(int Nsend )
             exit(1);
         }
         state.coid = coid;  // "fd(WRITE)"
-        #endif // __linux
+        #endif // __QNX__
 
         printf("\n");
         printf("Run %d rounds with %d processes\n\n", rounds, procs);
