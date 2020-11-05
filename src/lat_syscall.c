@@ -18,11 +18,30 @@ struct _state {
 
 #if defined(__QNX__)
 #include  <sys/neutrino.h>
-void
-do_ClockCycles(iter_t iterations, void *cookie)
+#include  <pthread.h>         // pthread_mutex_*()
+
+void do_ClockCycles(iter_t iterations, void *cookie)
 {
 	while (iterations-- > 0) {
 		ClockCycles();
+	}
+}
+
+void do_mutex(iter_t iterations, void *cookie)
+{
+	static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+	while (iterations-- > 0) {
+		pthread_mutex_lock( &mutex );
+		pthread_mutex_unlock( &mutex );
+	}
+}
+
+void do_modulo(iter_t iterations, void *cookie)
+{
+	volatile int z;
+	while (iterations-- > 0) {
+		volatile int x=63, y=5;
+		z = x % y;
 	}
 }
 #endif // __QNXNTO__
@@ -116,7 +135,7 @@ main(int ac, char **av)
 	int c;
 	struct _state state;
 	#ifdef QNX
-	char* usage = "[-P <parallelism>] [-W <warmup>] [-N <repetitions>] clock|null|read|write|stat|fstat|open [file]\n";
+	char* usage = "[-P <parallelism>] [-W <warmup>] [-N <repetitions>] mod|mutex|clock|null|read|write|stat|fstat|open [file]\n";
 	#else
 	char* usage = "[-P <parallelism>] [-W <warmup>] [-N <repetitions>] null|read|write|stat|fstat|open [file]\n";
 	#endif
@@ -150,12 +169,20 @@ main(int ac, char **av)
 		benchmp(NULL, do_getppid, NULL, 0, parallel,
 			warmup, repetitions, &state);
 		micro("Simple syscall", get_n());
-	#if defined(__QNX__)
+#if defined(__QNX__)
 	} else if (!strcmp("clock", av[optind])) {
 		benchmp(NULL, do_ClockCycles, NULL, 0, parallel,
 			warmup, repetitions, &state);
 		micro("Simple ClockCycles", get_n());
-	#endif // __QNX__
+	} else if (!strcmp("mutex", av[optind])) {
+		benchmp(NULL, do_mutex, NULL, 0, parallel,
+			warmup, repetitions, &state);
+		micro("Simple mutex", get_n());
+	} else if (!strcmp("mod", av[optind])) {
+		benchmp(NULL, do_modulo, NULL, 0, parallel,
+			warmup, repetitions, &state);
+		micro("Simple div", get_n());
+#endif // __QNX__
 	} else if (!strcmp("write", av[optind])) {
 		state.fd = open("/dev/null", 1);
 		benchmp(NULL, do_write, NULL, 0, parallel,
